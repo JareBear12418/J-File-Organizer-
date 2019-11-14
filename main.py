@@ -21,7 +21,7 @@ name = username
 chat_url = "https://build-system.fman.io/chat"
 server = Session()
 new_messages = []
-
+current_dir = os.path.dirname(os.path.realpath(__file__))
 class MainMenu(QDialog):
     def __init__(self, parent = None):
         super(MainMenu, self).__init__(parent)
@@ -82,7 +82,7 @@ class MainMenu(QDialog):
         self.model = QFileSystemModel(self)
         self.model.setRootPath(self.pathRoot)
         self.model.setReadOnly(False)
-
+        # self.model.setFilter(QDir.AllDirs)
         self.indexRoot = self.model.index(self.model.rootPath())
 
         self.treeView = QTreeView(self)
@@ -97,6 +97,9 @@ class MainMenu(QDialog):
         self.treeView.setDragEnabled(True)
         self.treeView.setAcceptDrops(True)
         self.treeView.setDropIndicatorShown(True)
+        self.treeView.setEditTriggers(QTreeView.NoEditTriggers)
+        self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.treeView.customContextMenuRequested.connect(self.showContextMenu)
 
         self.labelFileName = QLabel(self)
         self.labelFileName.setText("File Name:")
@@ -148,7 +151,10 @@ class MainMenu(QDialog):
         if fileName:
             print(fileName)
 
-
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            if self.lineEditFilePath.text() != '':
+                os.remove(self.lineEditFilePath.text())
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def on_treeView_clicked(self, index):
@@ -206,6 +212,15 @@ class MainMenu(QDialog):
             event.accept()
         else:
             event.ignore()
+    def showContextMenu(self, point):
+        ix = self.treeView.indexAt(point)
+        if ix.column() == 0:
+            menu = QMenu()
+            menu.addAction("Rename")
+            action = menu.exec_(self.treeView.mapToGlobal(point))
+            if action:
+                if action.text() == "Rename":
+                    self.treeView.edit(ix)
     # TREE VIEW END ====================================
 
     # CHAT CODE START ==============================
@@ -249,6 +264,6 @@ if __name__ == '__main__':
     app.setPalette(palette)
 
     main = MainMenu()
-    main.setWindowTitle('Main Menu')
+    main.setWindowTitle(title + ' ' + version)
     main.show()
     sys.exit(app.exec_())
