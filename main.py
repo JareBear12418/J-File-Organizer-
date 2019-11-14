@@ -25,7 +25,7 @@ new_messages = []
 class MainMenu(QDialog):
     def __init__(self, parent = None):
         super(MainMenu, self).__init__(parent)
-        subprocess.Popen(['test.pdf'],shell=True)
+        # subprocess.Popen(['test.pdf'],shell=True)
         self.last_pos_x = 0
         self.last_pos_w= 0
         self.last_size_h = 0
@@ -76,17 +76,58 @@ class MainMenu(QDialog):
                 QSizePolicy.Ignored)
 
         home_directory = expanduser(os.path.dirname(os.path.realpath(__file__)))
-        model = QDirModel()
-        view = QTreeView()
-        view.setModel(model)
-        view.setRootIndex(model.index(home_directory))
 
-        tabFileshbox = QHBoxLayout()
-        tabFileshbox.setContentsMargins(5, 5, 5, 5)
-        tabFileshbox.addWidget(view)
+        self.pathRoot = QDir.rootPath()
+
+        self.model = QFileSystemModel(self)
+        self.model.setRootPath(self.pathRoot)
+        self.model.setReadOnly(False)
+
+        self.indexRoot = self.model.index(self.model.rootPath())
+
+        self.treeView = QTreeView(self)
+        self.treeView.setModel(self.model)
+        self.treeView.setRootIndex(self.model.index(home_directory))
+        self.treeView.clicked.connect(self.on_treeView_clicked)
+        # self.treeView.setSelectionMode(self.SingleSelection)
+        self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
+        self.treeView.setAnimated(True)
+        self.treeView.setIndentation(20)
+        self.treeView.setSortingEnabled(True)
+        self.treeView.setDragEnabled(True)
+        self.treeView.setAcceptDrops(True)
+        self.treeView.setDropIndicatorShown(True)
+
+        self.labelFileName = QLabel(self)
+        self.labelFileName.setText("File Name:")
+
+        self.lineEditFileName = QLineEdit(self)
+
+        self.labelFilePath = QLabel(self)
+        self.labelFilePath.setText("File Path:")
+
+        self.lineEditFilePath = QLineEdit(self)
+
+        self.gridLayout = QGridLayout()
+        self.gridLayout.addWidget(self.labelFileName, 0, 0)
+        self.gridLayout.addWidget(self.lineEditFileName, 0, 1)
+        self.gridLayout.addWidget(self.labelFilePath, 1, 0)
+        self.gridLayout.addWidget(self.lineEditFilePath, 1, 1)
+
+        self.layout = QVBoxLayout(self)
+        self.layout.addLayout(self.gridLayout)
+        self.layout.addWidget(self.treeView)
+
+
+        # self.layout.addWidget(self.btnAddFile, 0, 0)
+        # tabFilesHbox.setContentsMargins(5, 5, 5, 5)
+        # self.layout.addWidget(self.tree, 1, 0)
         tabFiles = QWidget()
-        tabFiles.setLayout(tabFileshbox)
+        tabFiles.setLayout(self.layout)
+        # tabFiles.setLayout(tabFilesHbox)
 
+
+        # CHAT
         tabChat = QWidget()
         self.textEdit = QPlainTextEdit()
         self.messageText = QLineEdit()
@@ -101,6 +142,73 @@ class MainMenu(QDialog):
         self.bottomLeftTabWidget.addTab(tabFiles, "&Files")
         self.bottomLeftTabWidget.addTab(tabChat, "&Chat")
 
+    def btnAddFolder(self):
+        options = QFileDialog.Options()
+        fileName, _ = QFileDialog.getOpenFileName(self,"Create Folder", "","All Files (*)", options=options)
+        if fileName:
+            print(fileName)
+
+
+    # TREE VIEW START ====================================
+    @QtCore.pyqtSlot(QtCore.QModelIndex)
+    def on_treeView_clicked(self, index):
+        indexItem = self.model.index(index.row(), 0, index.parent())
+
+        fileName = self.model.fileName(indexItem)
+        filePath = self.model.filePath(indexItem)
+
+        self.lineEditFileName.setText(fileName)
+        self.lineEditFilePath.setText(filePath)
+        print(filePath)
+
+    def dragEnterEvent(self, event):
+        m = event.mimeData()
+        if m.hasUrls():
+            for url in m.urls():
+                if url.isLocalFile():
+                    event.accept()
+                    return
+        event.ignore()
+
+    def dropEvent(self, event):
+        if event.source():
+            QTreeView.dropEvent(self, event)
+        else:
+            ix = self.indexAt(event.pos())
+            if not self.model().isDir(ix):
+                ix = ix.parent()
+            pathDir = self.model().filePath(ix)
+            m = event.mimeData()
+            if m.hasUrls():
+                urlLocals = [url for url in m.urls() if url.isLocalFile()]
+                accepted = False
+                for urlLocal in urlLocals:
+                    path = urlLocal.toLocalFile()
+                    info = QFileInfo(path)
+                    n_path = QDir(pathDir).filePath(info.fileName())
+                    o_path = info.absoluteFilePath()
+                    if n_path == o_path:
+                        continue
+                    if info.isDir():
+                        QDir().rename(o_path, n_path)
+                    else:
+                        qfile = QFile(o_path)
+                        if QFile(n_path).exists():
+                            n_path += "(copy)"
+                        qfile.rename(n_path)
+                    accepted = True
+                if accepted:
+                    event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls:
+            event.setDropAction(Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+    # TREE VIEW END ====================================
+
+    # CHAT CODE START ==============================
     def fetch_new_messages(self):
         while True:
             response = server.get(chat_url).text
@@ -116,6 +224,7 @@ class MainMenu(QDialog):
         from datetime import datetime
         server.post(chat_url, {"time": str(datetime.now()), "name": name, "message": self.messageText.text()})
         self.messageText.clear()
+    # CHAT CODE END ==============================
 
 
 
