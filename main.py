@@ -9,9 +9,9 @@ from requests import Session
 from threading import Thread
 from functools import partial
 from os.path import expanduser
-import sys, os, getpass, subprocess, PyPDF2, re
+# pip install PyGTK / pip install giofile / pip install PyPDF2
+import sys, os, getpass, subprocess, PyPDF2, re, gio, gtk
 from time import sleep
-
 title = ' Work Management'
 version = 'v0.1'
 width = 800
@@ -25,13 +25,12 @@ class MainMenu(QDialog):
         # subprocess.Popen(['test.pdf'],shell=True)
         # creating an object
         self.last_pos_x = 0
-        self.last_pos_w= 0
+        self.last_pos_w = 0
         self.last_size_h = 0
-        self.last_size_w= 0
+        self.last_size_w = 0
         self.title = title + ' ' + version
         self.width = width
         self.height = height
-        self.num_of_lower_buttons = 4
         self.setMinimumSize(self.width, self.height)
         self.createTabs()
 
@@ -99,6 +98,9 @@ class MainMenu(QDialog):
 class Folder_Screeen(QDialog):
     def __init__(self, parent = None):
         super(Folder_Screeen, self).__init__(parent)
+        self.width = width
+        self.height = height
+        self.setMinimumSize(self.width, self.height)
         self.path = expanduser(os.path.dirname(os.path.realpath(__file__)))
         self.pathRoot = QDir.rootPath()
 
@@ -152,6 +154,26 @@ class Folder_Screeen(QDialog):
         layout.addLayout(self.gridLayout1)
 
     # TREE VIEW START ====================================
+    def get_icon_filename(self, filename, size):
+        #final_filename = "default_icon.png"
+        final_filename = ""
+        if os.path.isfile(filename):
+            # Get the icon name
+            file = gio.File(filename)
+            file_info = file.query_info('standard::icon')
+            file_icon = file_info.get_icon().get_names()[0]
+            # Get the icon file path
+            icon_theme = gtk.icon_theme_get_default()
+            icon_filename = icon_theme.lookup_icon(file_icon, size, 0)
+            if icon_filename != None:
+                final_filename = icon_filename.get_filename()
+
+        pixmap = QPixmap(final_filename)
+        tn = pixmap.scaled(128, 64128, Qt.KeepAspectRatio)
+        self.thumbnail.setPixmap(QPixmap(tn))
+        self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        return final_filename
+
 
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
@@ -181,18 +203,22 @@ class Folder_Screeen(QDialog):
         filePath = self.model.filePath(indexItem)
 
         try:
-            pixmap = QPixmap(filePath)
-            tn = pixmap.scaled(128, 64128, Qt.KeepAspectRatio)
-            self.thumbnail.setPixmap(QPixmap(tn))
-            self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+            get_icon_filename(filePath, 128)
+            
+            # pixmap = QPixmap(filePath)
+            # tn = pixmap.scaled(128, 128, Qt.KeepAspectRatio)
+            # self.thumbnail.setPixmap(QPixmap(tn))
+            # self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
         except:
             print('not an image')
         if fileName.endswith('.pdf'):
-            with open(filePath, mode = 'rb') as pdfFileObj:
-                pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-                pageObj = pdfReader.getPage(0)
-                self.pdfText.setPlainText(pageObj.extractText())
-
+            try:
+                with open(filePath, mode = 'rb') as pdfFileObj:
+                    pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+                    pageObj = pdfReader.getPage(0)
+                    self.pdfText.setPlainText(pageObj.extractText())
+            except:
+                self.pdfText.setPlainText('Error reading "{}"'.format(fileName))
     def dragEnterEvent(self, event):
         m = event.mimeData()
         if m.hasUrls():
