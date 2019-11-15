@@ -9,7 +9,7 @@ from requests import Session
 from threading import Thread
 from functools import partial
 from os.path import expanduser
-import sys, os, getpass, subprocess
+import sys, os, getpass, subprocess, PyPDF2, re
 from time import sleep
 
 title = ' Work Management'
@@ -17,15 +17,13 @@ version = 'v0.1'
 width = 800
 height = 600
 username = getpass.getuser()
-name = username
-chat_url = "https://build-system.fman.io/chat"
-server = Session()
-new_messages = []
+
 current_dir = os.path.dirname(os.path.realpath(__file__))
 class MainMenu(QDialog):
     def __init__(self, parent = None):
         super(MainMenu, self).__init__(parent)
         # subprocess.Popen(['test.pdf'],shell=True)
+        # creating an object
         self.last_pos_x = 0
         self.last_pos_w= 0
         self.last_size_h = 0
@@ -35,8 +33,6 @@ class MainMenu(QDialog):
         self.height = height
         self.num_of_lower_buttons = 4
         self.setMinimumSize(self.width, self.height)
-
-
         self.createTabs()
 
         topLayout = QHBoxLayout()
@@ -60,34 +56,81 @@ class MainMenu(QDialog):
 
 
         mainLayout = QGridLayout()
+        fs = Folder_Screeen()
+        fs.show()
 
-        # self.fetch_new_messages()
-        self.thread = Thread(target=self.fetch_new_messages, daemon=True)
-        self.thread.start()
-        self.display_new_messages()
-        # Signals:
-        self.messageText.returnPressed.connect(self.send_message)
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.display_new_messages)
-        self.timer.start(1000)
     def createTabs(self):
         self.bottomLeftTabWidget = QTabWidget()
         self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,
                 QSizePolicy.Ignored)
 
-        home_directory = expanduser(os.path.dirname(os.path.realpath(__file__)))
+        self.gridLayout = QGridLayout()
+        # self.gridLayout.addWidget(self.labelFileName, 0, 0)
+        # self.gridLayout.addWidget(self.lineEditFileName, 0, 1)
+        # self.gridLayout.addWidget(self.labelFilePath, 1, 0)
+        # self.gridLayout.addWidget(self.lineEditFilePath, 1, 1)
 
+        self.layout = QVBoxLayout(self)
+        self.layout.addLayout(self.gridLayout)
+        # self.layout.addWidget(self.treeView)
+
+
+        # self.layout.addWidget(self.btnAddFile, 0, 0)
+        # tabImportHbox.setContentsMargins(5, 5, 5, 5)
+        # self.layout.addWidget(self.tree, 1, 0)
+        tabImport = QWidget()
+        tabImport.setLayout(self.layout)
+        # tabImport.setLayout(tabImportHbox)
+
+
+        # HOME
+        tabHome = QWidget()
+        self.btnAddConnection = QPushButton('Add', self)
+
+        tabHomehbox = QVBoxLayout()
+        tabHomehbox.setContentsMargins(5, 5, 5, 5)
+        tabHomehbox.addWidget(self.btnAddConnection)
+        # tabHomehbox.addWidget(self.messageText)
+        tabHome.setLayout(tabHomehbox)
+
+        self.bottomLeftTabWidget.addTab(tabHome, "&Home")
+        self.bottomLeftTabWidget.addTab(tabImport, "&Import")
+
+class Folder_Screeen(QDialog):
+    def __init__(self, parent = None):
+        super(Folder_Screeen, self).__init__(parent)
+        self.path = expanduser(os.path.dirname(os.path.realpath(__file__)))
         self.pathRoot = QDir.rootPath()
 
-        self.model = QFileSystemModel(self)
-        self.model.setRootPath(self.pathRoot)
+        self.labelFileName = QLabel(self)
+        self.labelFileName.setText("Search:")
+        self.labelFileName.resize(100,30)
+
+        self.txtSearch = QLineEdit(self)
+        self.txtSearch.textChanged.connect(self.on_textChanged)
+        self.thumbnail = QLabel(self)
+
+        self.model = QFileSystemModel()
+        self.model.setRootPath(QDir.rootPath())
+        self.model.setFilter(QDir.NoDotAndDotDot
+            | QDir.AllEntries
+            | QDir.Dirs
+            | QDir.Files)
+        self.proxy_model = QSortFilterProxyModel(
+            recursiveFilteringEnabled=True,
+            filterRole=QFileSystemModel.FileNameRole)
+        self.proxy_model.setSourceModel(self.model)
         self.model.setReadOnly(False)
-        # self.model.setFilter(QDir.AllDirs)
+
+
+        self.model.setNameFilterDisables(False)
         self.indexRoot = self.model.index(self.model.rootPath())
 
         self.treeView = QTreeView(self)
-        self.treeView.setModel(self.model)
-        self.treeView.setRootIndex(self.model.index(home_directory))
+        self.treeView.setModel(self.proxy_model)
+        self.adjust_root_index()
+        # self.treeView.setRootIndex(self.model.index(self.path))
+        self.treeView.setRootIndex(self.proxy_model.mapFromSource(self.model.index(self.path)))
         self.treeView.clicked.connect(self.on_treeView_clicked)
         # self.treeView.setSelectionMode(self.SingleSelection)
         self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
@@ -101,50 +144,52 @@ class MainMenu(QDialog):
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self.showContextMenu)
 
-        self.labelFileName = QLabel(self)
-        self.labelFileName.setText("File Name:")
+        # foldersToShow = ['.pdf']
+        # display all files from foldersToShow
+        # for currentDir, dirnames, filenames in os.walk(home_directory):
+        #     for filename in filenames:
+        #         if not filename.endswith('.pdf'):
+        #             filenamePath = os.path.join(currentDir.replace(r"/",'\\'), filename)
+        #             fileId = self.model.index(filenamePath)
+        #             self.treeView.setRowHidden(fileId.row(), fileId.parent(), False)
 
-        self.lineEditFileName = QLineEdit(self)
+        pixmap = QPixmap('image.png')
+        pixmap = pixmap.scaled(128, 128)
+        self.thumbnail.setPixmap(pixmap)
+        self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
 
-        self.labelFilePath = QLabel(self)
-        self.labelFilePath.setText("File Path:")
+        # self.labelFilePath = QLabel(self)
+        # self.labelFilePath.setText("File Path:")
 
-        self.lineEditFilePath = QLineEdit(self)
+        # self.lineEditFilePath = QLineEdit(self)
+        self.pdfText = QPlainTextEdit(self)
+        self.pdfText.setReadOnly(True)
 
         self.gridLayout = QGridLayout()
         self.gridLayout.addWidget(self.labelFileName, 0, 0)
-        self.gridLayout.addWidget(self.lineEditFileName, 0, 1)
-        self.gridLayout.addWidget(self.labelFilePath, 1, 0)
-        self.gridLayout.addWidget(self.lineEditFilePath, 1, 1)
+        self.gridLayout.addWidget(self.txtSearch, 1, 0)
+        self.gridLayout.addWidget(self.treeView, 3, 0)
+        self.gridLayout1 = QGridLayout()
+        self.gridLayout1.addWidget(self.pdfText, 0, 1)
+        self.gridLayout1.addWidget(self.thumbnail, 1, 1)
+        # self.gridLayout.addWidget(self.labelFilePath, 1, 0)
+        # self.gridLayout.addWidget(self.lineEditFilePath, 1, 1)
 
-        self.layout = QVBoxLayout(self)
-        self.layout.addLayout(self.gridLayout)
-        self.layout.addWidget(self.treeView)
+        layout = QHBoxLayout(self)
+        layout.addLayout(self.gridLayout)
+        layout.addLayout(self.gridLayout1)
 
+    # TREE VIEW START ====================================
 
-        # self.layout.addWidget(self.btnAddFile, 0, 0)
-        # tabFilesHbox.setContentsMargins(5, 5, 5, 5)
-        # self.layout.addWidget(self.tree, 1, 0)
-        tabFiles = QWidget()
-        tabFiles.setLayout(self.layout)
-        # tabFiles.setLayout(tabFilesHbox)
+    @QtCore.pyqtSlot(str)
+    def on_textChanged(self):
+        self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
+        self.adjust_root_index()
 
-
-        # CHAT
-        tabChat = QWidget()
-        self.textEdit = QPlainTextEdit()
-        self.messageText = QLineEdit()
-        self.textEdit.setFocusPolicy(Qt.NoFocus)
-
-        tabChathbox = QVBoxLayout()
-        tabChathbox.setContentsMargins(5, 5, 5, 5)
-        tabChathbox.addWidget(self.textEdit)
-        tabChathbox.addWidget(self.messageText)
-        tabChat.setLayout(tabChathbox)
-
-        self.bottomLeftTabWidget.addTab(tabFiles, "&Files")
-        self.bottomLeftTabWidget.addTab(tabChat, "&Chat")
-
+    def adjust_root_index(self):
+        root_index = self.model.index(self.path)
+        proxy_index = self.proxy_model.mapFromSource(root_index)
+        self.treeView.setRootIndex(proxy_index)
     def btnAddFolder(self):
         options = QFileDialog.Options()
         fileName, _ = QFileDialog.getOpenFileName(self,"Create Folder", "","All Files (*)", options=options)
@@ -155,16 +200,22 @@ class MainMenu(QDialog):
         if event.key() == Qt.Key_Delete:
             if self.lineEditFilePath.text() != '':
                 os.remove(self.lineEditFilePath.text())
-    # TREE VIEW START ====================================
+
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def on_treeView_clicked(self, index):
-        indexItem = self.model.index(index.row(), 0, index.parent())
+        # indexItem = self.model.index(index.row(), 0, index.parent())
+        indexItem = self.model.index(self.path, index.row(), index.parent())
 
         fileName = self.model.fileName(indexItem)
         filePath = self.model.filePath(indexItem)
 
-        self.lineEditFileName.setText(fileName)
-        self.lineEditFilePath.setText(filePath)
+        if fileName.endswith('.pdf'):
+            with open(filePath, mode = 'rb') as pdfFileObj:
+                pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+                pageObj = pdfReader.getPage(0)
+                self.pdfText.setPlainText(pageObj.extractText())
+                print(pageObj.extractText())
+        print(fileName)
         print(filePath)
 
     def dragEnterEvent(self, event):
@@ -222,27 +273,6 @@ class MainMenu(QDialog):
                 if action.text() == "Rename":
                     self.treeView.edit(ix)
     # TREE VIEW END ====================================
-
-    # CHAT CODE START ==============================
-    def fetch_new_messages(self):
-        while True:
-            response = server.get(chat_url).text
-            if response:
-                new_messages.append(response)
-            sleep(.5)
-
-    def display_new_messages(self):
-        while new_messages:
-            self.textEdit.appendPlainText(new_messages.pop(0))
-
-    def send_message(self):
-        from datetime import datetime
-        server.post(chat_url, {"time": str(datetime.now()), "name": name, "message": self.messageText.text()})
-        self.messageText.clear()
-    # CHAT CODE END ==============================
-
-
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
@@ -263,7 +293,7 @@ if __name__ == '__main__':
     palette.setColor(QPalette.HighlightedText, Qt.black)
     app.setPalette(palette)
 
-    main = MainMenu()
+    main = Folder_Screeen()
     main.setWindowTitle(title + ' ' + version)
     main.show()
     sys.exit(app.exec_())
