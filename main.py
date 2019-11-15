@@ -104,7 +104,7 @@ class Folder_Screeen(QDialog):
 
         self.labelFileName = QLabel(self)
         self.labelFileName.setText("Search:")
-        self.labelFileName.resize(100,30)
+        self.labelFileName.resize(100, 30)
 
         self.txtSearch = QLineEdit(self)
         self.txtSearch.textChanged.connect(self.on_textChanged)
@@ -112,18 +112,12 @@ class Folder_Screeen(QDialog):
 
         self.model = QFileSystemModel()
         self.model.setRootPath(QDir.rootPath())
-        self.model.setFilter(QDir.NoDotAndDotDot
-            | QDir.AllEntries
-            | QDir.Dirs
-            | QDir.Files)
-        self.proxy_model = QSortFilterProxyModel(
-            recursiveFilteringEnabled=True,
-            filterRole=QFileSystemModel.FileNameRole)
+        self.model.setFilter(QDir.NoDotAndDotDot | QDir.AllEntries | QDir.Dirs | QDir.Files)
+        self.proxy_model = QSortFilterProxyModel(recursiveFilteringEnabled = True, filterRole = QFileSystemModel.FileNameRole)
         self.proxy_model.setSourceModel(self.model)
         self.model.setReadOnly(False)
-
-
         self.model.setNameFilterDisables(False)
+
         self.indexRoot = self.model.index(self.model.rootPath())
 
         self.treeView = QTreeView(self)
@@ -153,10 +147,6 @@ class Folder_Screeen(QDialog):
         #             fileId = self.model.index(filenamePath)
         #             self.treeView.setRowHidden(fileId.row(), fileId.parent(), False)
 
-        pixmap = QPixmap('image.png')
-        pixmap = pixmap.scaled(128, 128)
-        self.thumbnail.setPixmap(pixmap)
-        self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
 
         # self.labelFilePath = QLabel(self)
         # self.labelFilePath.setText("File Path:")
@@ -184,7 +174,7 @@ class Folder_Screeen(QDialog):
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
         self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
-        self.adjust_root_index()
+        self.adjust_root_index() 
 
     def adjust_root_index(self):
         root_index = self.model.index(self.path)
@@ -203,12 +193,29 @@ class Folder_Screeen(QDialog):
 
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def on_treeView_clicked(self, index):
-        # indexItem = self.model.index(index.row(), 0, index.parent())
-        indexItem = self.model.index(self.path, index.row(), index.parent())
-
+        # indexItem = self.proxy_model.mapFromSource(self.model.index(self.path))
+        # indexItem = self.model.index(self.path, index.parent())
+        # root_index = self.model.index(self.path)
+        # proxy_index = self.proxy_model.mapFromSource(root_index)
+        # selected_indexes = self.treeView.selectionModel().selectedRows()
+        # first_cell_selected = self.proxy_model.data(self.proxy_model.index(selected_indexes[0].row(), 0), Qt.DisplayRole).toString()
+        # row = selected_indexes[0].row()
+        # row_data = [proxy_model.index(row, col).data().toString() for col in range(self.proxy_model.columnCount())]
+        # indexItem = self.proxy_model.index(row, col).data()
+        # selected_indexes = self.treeView.selectionModel().selectedRows()
+        # row = selected_indexes[0].row()
+        # col = selected_indexes[0].col()
+        # row_data = [str(self.proxy_model.index(row, col).data()) for col in range(self.proxy_model.columnCount())]
+        
+        # indexItem = self.proxy_model.index(row, 0).data()
+        
+        indexItem = self.model.index(index.row(), 0, index.parent())# print(indexItem)
         fileName = self.model.fileName(indexItem)
         filePath = self.model.filePath(indexItem)
-
+        
+        # # self.thumbnail.setPixmap(QPixmap(filePath))
+        # # self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        
         if fileName.endswith('.pdf'):
             with open(filePath, mode = 'rb') as pdfFileObj:
                 pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
