@@ -123,10 +123,8 @@ class Folder_Screeen(QDialog):
         self.treeView = QTreeView(self)
         self.treeView.setModel(self.proxy_model)
         self.adjust_root_index()
-        # self.treeView.setRootIndex(self.model.index(self.path))
         self.treeView.setRootIndex(self.proxy_model.mapFromSource(self.model.index(self.path)))
         self.treeView.clicked.connect(self.on_treeView_clicked)
-        # self.treeView.setSelectionMode(self.SingleSelection)
         self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
         self.treeView.setAnimated(True)
         self.treeView.setIndentation(20)
@@ -138,20 +136,6 @@ class Folder_Screeen(QDialog):
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self.showContextMenu)
 
-        # foldersToShow = ['.pdf']
-        # display all files from foldersToShow
-        # for currentDir, dirnames, filenames in os.walk(home_directory):
-        #     for filename in filenames:
-        #         if not filename.endswith('.pdf'):
-        #             filenamePath = os.path.join(currentDir.replace(r"/",'\\'), filename)
-        #             fileId = self.model.index(filenamePath)
-        #             self.treeView.setRowHidden(fileId.row(), fileId.parent(), False)
-
-
-        # self.labelFilePath = QLabel(self)
-        # self.labelFilePath.setText("File Path:")
-
-        # self.lineEditFilePath = QLineEdit(self)
         self.pdfText = QPlainTextEdit(self)
         self.pdfText.setReadOnly(True)
 
@@ -162,8 +146,6 @@ class Folder_Screeen(QDialog):
         self.gridLayout1 = QGridLayout()
         self.gridLayout1.addWidget(self.pdfText, 0, 1)
         self.gridLayout1.addWidget(self.thumbnail, 1, 1)
-        # self.gridLayout.addWidget(self.labelFilePath, 1, 0)
-        # self.gridLayout.addWidget(self.lineEditFilePath, 1, 1)
 
         layout = QHBoxLayout(self)
         layout.addLayout(self.gridLayout)
@@ -174,7 +156,7 @@ class Folder_Screeen(QDialog):
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
         self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
-        self.adjust_root_index() 
+        self.adjust_root_index()
 
     def adjust_root_index(self):
         root_index = self.model.index(self.path)
@@ -193,37 +175,23 @@ class Folder_Screeen(QDialog):
 
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def on_treeView_clicked(self, index):
-        # indexItem = self.proxy_model.mapFromSource(self.model.index(self.path))
-        # indexItem = self.model.index(self.path, index.parent())
-        # root_index = self.model.index(self.path)
-        # proxy_index = self.proxy_model.mapFromSource(root_index)
-        # selected_indexes = self.treeView.selectionModel().selectedRows()
-        # first_cell_selected = self.proxy_model.data(self.proxy_model.index(selected_indexes[0].row(), 0), Qt.DisplayRole).toString()
-        # row = selected_indexes[0].row()
-        # row_data = [proxy_model.index(row, col).data().toString() for col in range(self.proxy_model.columnCount())]
-        # indexItem = self.proxy_model.index(row, col).data()
-        # selected_indexes = self.treeView.selectionModel().selectedRows()
-        # row = selected_indexes[0].row()
-        # col = selected_indexes[0].col()
-        # row_data = [str(self.proxy_model.index(row, col).data()) for col in range(self.proxy_model.columnCount())]
-        
-        # indexItem = self.proxy_model.index(row, 0).data()
-        
-        indexItem = self.model.index(index.row(), 0, index.parent())# print(indexItem)
+        source_index = self.proxy_model.mapToSource(index)
+        indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         fileName = self.model.fileName(indexItem)
         filePath = self.model.filePath(indexItem)
-        
-        # # self.thumbnail.setPixmap(QPixmap(filePath))
-        # # self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
-        
+
+        try:
+            pixmap = QPixmap(filePath)
+            tn = pixmap.scaled(128, 64128, Qt.KeepAspectRatio)
+            self.thumbnail.setPixmap(QPixmap(tn))
+            self.thumbnail.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        except:
+            print('not an image')
         if fileName.endswith('.pdf'):
             with open(filePath, mode = 'rb') as pdfFileObj:
                 pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
                 pageObj = pdfReader.getPage(0)
                 self.pdfText.setPlainText(pageObj.extractText())
-                print(pageObj.extractText())
-        print(fileName)
-        print(filePath)
 
     def dragEnterEvent(self, event):
         m = event.mimeData()
