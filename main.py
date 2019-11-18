@@ -14,11 +14,11 @@ from PIL import Image
 from time import sleep
 from pathlib import Path
 # pip install PyGTK / pip install giofile / pip install PyPDF2 / pip install PyMuPDF / pip install ezdxf
-import sys, os, getpass, subprocess, PyPDF2, re, json, fitz, ezdxf, glob
+import sys, os, getpass, subprocess, glob, shutil, PyPDF2, re, json, fitz
 title = ' Work Management'
 version = 'v0.1'
-width = 1000
-height = 800
+width = 800
+height = 600
 username = getpass.getuser()
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -68,12 +68,13 @@ class MainMenu(QWidget):
         self.title = title + ' ' + version
         self.width = width
         self.height = height
-        self.setMinimumSize(self.width, self.height)
+        self.resize(self.width, self.height)
 
 
         self.filePath = ''
         self.fileName = ''
         self.price = ''
+        self.pdf_location = ''
 
 
         self.createTabs()
@@ -128,9 +129,13 @@ class MainMenu(QWidget):
         self.folderToImport.currentTextChanged.connect(self.verify)
         # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
         # dirs = [os.path.join(r,file) for r,d,f in os.walk(files_dir) for file in f]
-        dirs = [os.path.abspath(x) for x in os.listdir(files_dir)]
+        # dirs = [os.path.abspath(x) for x in os.listdir(files_dir)]
+        dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
         for i, j in enumerate(dirs):
-            self.folderToImport.addItem(j)
+            global files_dir
+            j = j.replace('\\', '/')
+            files_dir = files_dir.replace('\\', '/')
+            self.folderToImport.addItem(files_dir + j)
             self.folderToImport.setItemIcon(i,QIcon('icons/folder.png'))
         self.gridLayoutImport.addWidget(self.folderToImport, 0, 1)
 
@@ -249,7 +254,7 @@ class MainMenu(QWidget):
             j = j.replace('\\', '/')
             if folder == j:
                 if self.fileName == names_list[i]:
-                    buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists\nin {self.filePath}!", QMessageBox.Ok, QMessageBox.Ok)
+                    buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists in\n{folder}", QMessageBox.Ok, QMessageBox.Ok)
                     return
         passwords_json.append({
             'path': [folder + '/' + self.fileName],
@@ -262,6 +267,7 @@ class MainMenu(QWidget):
             'weight': [self.txtWeight.text()]
             }
         )
+        shutil.copyfile(self.filePath, folder + '/' + self.fileName)
         # sort json file
         sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
         # Write to passwords file
@@ -290,16 +296,18 @@ class MainMenu(QWidget):
     def verify(self):
         self.filePath = self.filePath.replace('\\', '/')
         self.previewText.setPlainText(f"""Preview:
-PDF Path: {self.filePath}
 PDF Name: {self.fileName}
+PDF Path: {self.filePath}
 
 Selected Folder: {self.folderToImport.currentText()}
+
 Selected Metal Thickness: {self.metalThickness.currentText()}
 Selected Metal Type: {self.metalType.currentText()}
 
 Cut Time: {self.txtCutTime.text()}
 Bend Time: {self.txtBendTime.text()}
 Weight: {self.txtWeight.text()}
+
 Price: {self.price}
 """)
         if self.txtBendTime.text() == '' or self.txtCutTime.text() == '' or self.txtWeight.text() == '' or self.fileName == '' or self.filePath == '':
@@ -307,7 +315,7 @@ Price: {self.price}
         else:
             self.btnImport.setEnabled(True)
     def openImage(self):
-        self.vi = view_image(self.filePath)
+        self.vi = view_image(self.pdf_location)
         self.vi.show()
     def find_pdf(self):
         filePath, _ = QFileDialog.getOpenFileName(self,"Your PDF", "","Portable Document File(*.pdf)")
@@ -315,26 +323,25 @@ Price: {self.price}
             self.filePath = filePath
             p = Path(self.filePath)
             self.fileName = p.name
-            pdffile = self.filePath
-            doc = fitz.open(pdffile)
-            page = doc.loadPage(0) #number of page
-            pix = page.getPixmap()
-            output = "outfile.png"
-            pix.writePNG(output)
-            pixmap = QPixmap(output)
-            tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
-            # self.thumbnail.setPixmap(QPixmap(tn))
-            self.thumbnail.setIcon(QIcon(tn))
-            self.thumbnail.setIconSize(QSize(512,512))
+            new_name = (os.path.splitext(self.fileName)[0])
+            output = cache_dir + new_name + ' - pdf.png'
+            self.pdf_location = output
+            if not os.path.exists(output):
+                pdffile = self.filePath
+                doc = fitz.open(pdffile)
+                page = doc.loadPage(0) #number of page
+                pix = page.getPixmap()
+                pix.writePNG(output)
+                pixmap = QPixmap(output)
+                tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                self.thumbnail.setIcon(QIcon(tn))
+                self.thumbnail.setIconSize(QSize(512,512))
+            else:
+                pixmap = QPixmap(output)
+                tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                self.thumbnail.setIcon(QIcon(tn))
+                self.thumbnail.setIconSize(QSize(512,512))
             self.verify()
-        # directory = QFileDialog.getExistingDirectory(None,
-        #     "Select Directory",
-        #     QDir.currentPath())
-        # print(directory)
-        # options = QFileDialog.Options()
-        # fileName, _ = QFileDialog.getOpenFileName(self,"Your PDF", "","Portable Document File(*.pdf)", options=options)
-        # if fileName:
-        #     print(fileName)
 
     def open_tree_directory(self, directory):
         self.fs = Folder_Screeen(directory)
@@ -358,7 +365,7 @@ class Folder_Screeen(QWidget):
         self.height = height
         directory_to_open = directory_to_open.replace("\\", "/")
         self.setWindowTitle(directory_to_open)
-        self.setMinimumSize(self.width, self.height)
+        self.resize(self.width, self.height)
 
         self.path = directory_to_open
         self.pathRoot = QDir.rootPath()
@@ -408,8 +415,8 @@ class Folder_Screeen(QWidget):
         self.gridLayout.addWidget(self.txtSearch, 1, 0)
         self.gridLayout.addWidget(self.treeView, 3, 0)
         self.gridLayout1 = QGridLayout()
-        self.gridLayout1.addWidget(self.pdfText, 0, 1)
-        self.gridLayout1.addWidget(self.thumbnail, 1, 1)
+        self.gridLayout1.addWidget(self.pdfText, 0, 0)
+        self.gridLayout1.addWidget(self.thumbnail, 0, 1)
 
         layout = QHBoxLayout(self)
         layout.addLayout(self.gridLayout)
@@ -435,10 +442,13 @@ class Folder_Screeen(QWidget):
 
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def on_treeView_clicked(self, index):
+        global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
+        
         source_index = self.proxy_model.mapToSource(index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
+        self.pdf_location = ''
         self.setWindowTitle(self.filePath)
         try:
             pixmap = QPixmap(self.filePath)
@@ -475,6 +485,25 @@ class Folder_Screeen(QWidget):
                 with open(self.filePath, mode = 'rb') as pdfFileObj:
                     new_name = (os.path.splitext(self.fileName)[0])
                     output = cache_dir + new_name + ' - pdf.png'
+                    self.pdf_location = output
+                    for i, j in enumerate(names_list):
+                        if self.fileName == j:
+                            self.price = ''
+                            self.pdfText.setPlainText(f"""Preview:
+PDF Name: {paths_list[i]}
+PDF Path: {j}
+
+Folder: {folder_list[i]}
+
+Selected Metal Thickness: {metal_thickness_list[i]}
+Selected Metal Type: {metal_type_list[i]}
+
+Cut Time: {cut_time_list[i]}
+Bend Time: {bend_time_list[i]}
+Weight: {weight_list[i]}
+
+Price: {self.price}
+""")
                     if not os.path.exists(output):
                         pdffile = self.filePath
                         doc = fitz.open(pdffile)
@@ -495,14 +524,12 @@ class Folder_Screeen(QWidget):
                         # self.thumbnail.setPixmap(QPixmap(tn))
                         self.thumbnail.setIcon(QIcon(tn))
                         self.thumbnail.setIconSize(QSize(512,512))
-                    pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-                    pageObj = pdfReader.getPage(0)
-                    self.pdfText.setPlainText(pageObj.extractText())
+                    # self.pdfText.setPlainText(pageObj.extractText())
             except:
                 self.pdfText.setPlainText('Error reading "{}"'.format(self.fileName))
 
     def openImage(self):
-        self.vi = view_image(self.filePath)
+        self.vi = view_image(self.pdf_location)
         self.vi.show()
     def dragEnterEvent(self, event):
         m = event.mimeData()
@@ -653,7 +680,7 @@ class view_image(QtWidgets.QWidget):
         self.loadImage()
 
     def loadImage(self):
-        self.viewer.setPhoto(QPixmap('outfile.png'))
+        self.viewer.setPhoto(QPixmap(self.image_to_open))
 
     def pixInfo(self):
         self.viewer.toggleDragMode()
