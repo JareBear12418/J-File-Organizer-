@@ -342,31 +342,32 @@ class MainMenu(QWidget):
                 }
             )
             shutil.copyfile(self.filePath, folder + '/' + self.fileName)
+            self.pathList.setCurrentRow(readedFileList.index(self.filePath))
             # sort json file
-            sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
-            # Write to passwords file
-            with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
-                json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
+        sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
+        # Write to passwords file
+        with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
+            json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
 
-            with open(settings_dir + 'saved_data.json') as file:
-                saved_data = json.load(file)
-                for info in passwords_json:
-                    for path in info['path']:
-                        paths_list.append(path)
-                    for name in info['name']:
-                        names_list.append(name)
-                    for folder in info['folder']:
-                        folder_list.append(folder)
-                    for thickness in info['thickness']:
-                        metal_thickness_list.append(thickness)
-                    for metal_type in info['type']:
-                        metal_type_list.append(metal_type)
-                    for cut_time in info['cut time']:
-                        cut_time_list.append(cut_time)
-                    for bend_time in info['bend time']:
-                        bend_time_list.append(bend_time)
-                    for weight in info['weight']:
-                        weight_list.append(weight)
+        with open(settings_dir + 'saved_data.json') as file:
+            saved_data = json.load(file)
+            for info in passwords_json:
+                for path in info['path']:
+                    paths_list.append(path)
+                for name in info['name']:
+                    names_list.append(name)
+                for folder in info['folder']:
+                    folder_list.append(folder)
+                for thickness in info['thickness']:
+                    metal_thickness_list.append(thickness)
+                for metal_type in info['type']:
+                    metal_type_list.append(metal_type)
+                for cut_time in info['cut time']:
+                    cut_time_list.append(cut_time)
+                for bend_time in info['bend time']:
+                    bend_time_list.append(bend_time)
+                for weight in info['weight']:
+                    weight_list.append(weight)
     def verify(self):
         self.filePath = self.filePath.replace('\\', '/')
         self.previewText.setPlainText(f"""Preview:
