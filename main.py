@@ -24,6 +24,7 @@ username = getpass.getuser()
 current_dir = os.path.dirname(os.path.realpath(__file__))
 settings_dir = os.path.dirname(os.path.realpath(__file__)) + '/settings/'
 files_dir = os.path.dirname(os.path.realpath(__file__)) + '/Files/'
+cache_dir = os.path.dirname(os.path.realpath(__file__)) + '/Cache/'
 # JSON DATA START ================
 saved_data = ''
 paths_list = []
@@ -43,23 +44,14 @@ all_metal_thicknesses = ['8',
                          '10',
                          '11',
                          '12',
-                         '13',
                          '14',
-                         '15',
                          '16',
-                         '17',
                          '18',
-                         '19',
                          '20',
-                         '21',
                          '22',
-                         '23',
                          '24',
-                         '25',
                          '26',
-                         '27',
                          '28',
-                         '29',
                          '30'
                          ]
 all_metal_types = ['Steel',
@@ -130,13 +122,13 @@ class MainMenu(QWidget):
         self.btnImport = QPushButton('Import',self)
         self.btnImport.clicked.connect(self.import_pdf)
 
-        # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
-        dirs = [os.path.abspath(x) for x in os.listdir(files_dir)]
-        # dirs = [os.path.join(r,file) for r,d,f in os.walk(files_dir) for file in f]
         self.label = QLabel('Folder:', self)
         self.gridLayoutImport.addWidget(self.label, 0, 0)
         self.folderToImport = QComboBox(self)
         self.folderToImport.currentTextChanged.connect(self.verify)
+        # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
+        # dirs = [os.path.join(r,file) for r,d,f in os.walk(files_dir) for file in f]
+        dirs = [os.path.abspath(x) for x in os.listdir(files_dir)]
         for i, j in enumerate(dirs):
             self.folderToImport.addItem(j)
             self.folderToImport.setItemIcon(i,QIcon('icons/folder.png'))
@@ -233,10 +225,36 @@ class MainMenu(QWidget):
         self.bottomLeftTabWidget.addTab(tabImport, "&Import")
     def import_pdf(self):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
+        with open(settings_dir + 'saved_data.json') as file:
+            saved_data = json.load(file)
+            for info in passwords_json:
+                for path in info['path']:
+                    paths_list.append(path)
+                for name in info['name']:
+                    names_list.append(name)
+                for folder in info['folder']:
+                    folder_list.append(folder)
+                for thickness in info['thickness']:
+                    metal_thickness_list.append(thickness)
+                for metal_type in info['type']:
+                    metal_type_list.append(metal_type)
+                for cut_time in info['cut time']:
+                    cut_time_list.append(cut_time)
+                for bend_time in info['bend time']:
+                    bend_time_list.append(bend_time)
+                for weight in info['weight']:
+                    weight_list.append(weight)
+        folder = self.folderToImport.currentText().replace('\\', '/')
+        for i, j in enumerate(folder_list):
+            j = j.replace('\\', '/')
+            if folder == j:
+                if self.fileName == names_list[i]:
+                    buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists\nin {self.filePath}!", QMessageBox.Ok, QMessageBox.Ok)
+                    return
         passwords_json.append({
-            'path': [self.filePath],
+            'path': [folder + '/' + self.fileName],
             'name': [self.fileName],
-            'folder': [self.folderToImport.currentText()], #TODO this
+            'folder': [folder], #TODO this
             'thickness': [self.metalThickness.currentText()],
             'type': [self.metalType.currentText()],
             'cut time': [self.txtCutTime.text()],
@@ -250,6 +268,25 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
             json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
 
+        with open(settings_dir + 'saved_data.json') as file:
+            saved_data = json.load(file)
+            for info in passwords_json:
+                for path in info['path']:
+                    paths_list.append(path)
+                for name in info['name']:
+                    names_list.append(name)
+                for folder in info['folder']:
+                    folder_list.append(folder)
+                for thickness in info['thickness']:
+                    metal_thickness_list.append(thickness)
+                for metal_type in info['type']:
+                    metal_type_list.append(metal_type)
+                for cut_time in info['cut time']:
+                    cut_time_list.append(cut_time)
+                for bend_time in info['bend time']:
+                    bend_time_list.append(bend_time)
+                for weight in info['weight']:
+                    weight_list.append(weight)
     def verify(self):
         self.filePath = self.filePath.replace('\\', '/')
         self.previewText.setPlainText(f"""Preview:
@@ -413,35 +450,51 @@ class Folder_Screeen(QWidget):
             print('not an image')
         if self.fileName.endswith('.dxf') or self.fileName.endswith('.DXF'):
             try:
-                os.popen(f'dia \"{self.filePath}\" -e outfile.png')
-                from PyQt5 import QtTest
-                QtTest.QTest.qWait(1000)
-                output = "outfile.png"
-                pixmap = QPixmap(output)
-                tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
-                # self.thumbnail.setPixmap(QPixmap(tn))
-                self.thumbnail.setIcon(QIcon(tn))
-                self.thumbnail.setIconSize(QSize(512,512))
+                new_name = (os.path.splitext(self.fileName)[0])
+                output = cache_dir + new_name + ' - dxf.png'
+                if not os.path.exists(output):
+                    os.popen(f'dia \"{self.filePath}\" -e \"{output}\"')
+                    from PyQt5 import QtTest
+                    QtTest.QTest.qWait(1000)
+                    pixmap = QPixmap(output)
+                    tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                    # self.thumbnail.setPixmap(QPixmap(tn))
+                    self.thumbnail.setIcon(QIcon(tn))
+                    self.thumbnail.setIconSize(QSize(512,512))
+                else:
+                    pixmap = QPixmap(output)
+                    tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                    # self.thumbnail.setPixmap(QPixmap(tn))
+                    self.thumbnail.setIcon(QIcon(tn))
+                    self.thumbnail.setIconSize(QSize(512,512))
             except:
                 self.pdfText.setPlainText('Error reading "{}"'.format(self.fileName))
 
         if self.fileName.endswith('.pdf') or self.fileName.endswith('.PDF'):
             try:
                 with open(self.filePath, mode = 'rb') as pdfFileObj:
-                    pdffile = self.filePath
-                    doc = fitz.open(pdffile)
-                    page = doc.loadPage(0) #number of page
-                    pix = page.getPixmap()
-                    output = "outfile.png"
-                    pix.writePNG(output)
+                    new_name = (os.path.splitext(self.fileName)[0])
+                    output = cache_dir + new_name + ' - pdf.png'
+                    if not os.path.exists(output):
+                        pdffile = self.filePath
+                        doc = fitz.open(pdffile)
+                        page = doc.loadPage(0) #number of page
+                        pix = page.getPixmap()
+                        # output = "outfile.png"
+                        pix.writePNG(output)
 
-                    pixmap = QPixmap(output)
-                    tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
-                    # self.thumbnail.setPixmap(QPixmap(tn))
-                    self.thumbnail.setIcon(QIcon(tn))
-                    self.thumbnail.setIconSize(QSize(512,512))
-                    # self.thumbnail.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
-
+                        pixmap = QPixmap(output)
+                        tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                        # self.thumbnail.setPixmap(QPixmap(tn))
+                        self.thumbnail.setIcon(QIcon(tn))
+                        self.thumbnail.setIconSize(QSize(512,512))
+                        # self.thumbnail.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
+                    else:
+                        pixmap = QPixmap(output)
+                        tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                        # self.thumbnail.setPixmap(QPixmap(tn))
+                        self.thumbnail.setIcon(QIcon(tn))
+                        self.thumbnail.setIconSize(QSize(512,512))
                     pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
                     pageObj = pdfReader.getPage(0)
                     self.pdfText.setPlainText(pageObj.extractText())
@@ -580,7 +633,6 @@ class PhotoViewer(QtWidgets.QGraphicsView):
             self.photoClicked.emit(self.mapToScene(event.pos()).toPoint())
         super(PhotoViewer, self).mousePressEvent(event)
 
-
 class view_image(QtWidgets.QWidget):
     def __init__(self, directory_to_open):
         super(view_image, self).__init__()
@@ -613,9 +665,11 @@ if __name__ == '__main__':
     if not os.path.exists(settings_dir):
         os.makedirs(settings_dir)
 
-
     if not os.path.exists(files_dir):
         os.makedirs(files_dir)
+
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
 
     if os.path.exists(settings_dir + 'saved_data.json'):
         with open(settings_dir + 'saved_data.json') as file:
