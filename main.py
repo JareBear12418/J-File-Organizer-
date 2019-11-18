@@ -52,8 +52,7 @@ all_metal_thicknesses = ['8',
                          '24',
                          '26',
                          '28',
-                         '30'
-                         ]
+                         '30']
 all_metal_types = ['Steel',
                    'Stainless Steel']
 class MainMenu(QWidget):
@@ -68,8 +67,7 @@ class MainMenu(QWidget):
         self.title = title + ' ' + version
         self.width = width
         self.height = height
-        self.resize(self.width, self.height)
-
+        self.showMaximized()
 
         self.filePath = ''
         self.fileName = ''
@@ -80,11 +78,7 @@ class MainMenu(QWidget):
         self.createTabs()
 
         topLayout = QHBoxLayout()
-        # topLayout.addWidget(styleLabel)
-        # topLayout.addWidget(styleComboBox)
         topLayout.addStretch(1)
-        # topLayout.addWidget(self.useStylePaletteCheckBox)
-        # topLayout.addWidget(disableWidgetsCheckBox)
 
         mainLayout = QGridLayout()
         mainLayout.addLayout(topLayout, 0, 0, 0, 0)
@@ -261,6 +255,7 @@ class MainMenu(QWidget):
             if folder == j:
                 if self.fileName == names_list[i]:
                     buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists in\n{folder}", QMessageBox.Ok, QMessageBox.Ok)
+                    self.pathList.setCurrentRow(self.pathList.currentRow() + 1)
                     return
         passwords_json.append({
             'path': [folder + '/' + self.fileName],
@@ -299,7 +294,8 @@ class MainMenu(QWidget):
                     bend_time_list.append(bend_time)
                 for weight in info['weight']:
                     weight_list.append(weight)
-
+        
+        self.pathList.setCurrentRow(self.pathList.currentRow() + 1)
     def import_all_pdf(self):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
         with open(settings_dir + 'saved_data.json') as file:
@@ -321,51 +317,56 @@ class MainMenu(QWidget):
                     bend_time_list.append(bend_time)
                 for weight in info['weight']:
                     weight_list.append(weight)
-        folder = self.folderToImport.currentText().replace('\\', '/')
-        for i, j in enumerate(folder_list):
-            j = j.replace('\\', '/')
-            if folder == j:
-                if self.fileName == names_list[i]:
-                    buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists in\n{folder}", QMessageBox.Ok, QMessageBox.Ok)
-                    return
-        passwords_json.append({
-            'path': [folder + '/' + self.fileName],
-            'name': [self.fileName],
-            'folder': [folder], #TODO this
-            'thickness': [self.metalThickness.currentText()],
-            'type': [self.metalType.currentText()],
-            'cut time': [self.txtCutTime.text()],
-            'bend time': [self.txtBendTime.text()],
-            'weight': [self.txtWeight.text()]
-            }
-        )
-        shutil.copyfile(self.filePath, folder + '/' + self.fileName)
-        # sort json file
-        sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
-        # Write to passwords file
-        with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
-            json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
+        readedFileList = [self.pathList.item(i).text() for i in range(self.pathList.count())]
 
-        with open(settings_dir + 'saved_data.json') as file:
-            saved_data = json.load(file)
-            for info in passwords_json:
-                for path in info['path']:
-                    paths_list.append(path)
-                for name in info['name']:
-                    names_list.append(name)
-                for folder in info['folder']:
-                    folder_list.append(folder)
-                for thickness in info['thickness']:
-                    metal_thickness_list.append(thickness)
-                for metal_type in info['type']:
-                    metal_type_list.append(metal_type)
-                for cut_time in info['cut time']:
-                    cut_time_list.append(cut_time)
-                for bend_time in info['bend time']:
-                    bend_time_list.append(bend_time)
-                for weight in info['weight']:
-                    weight_list.append(weight)
-        self.pathList.setCurrentItem(1)
+        for i, file_in_list in enumerate(readedFileList):
+            self.filePath = file_in_list
+            p = Path(self.filePath)
+            self.fileName = p.name
+            folder = self.folderToImport.currentText().replace('\\', '/')
+            for i, j in enumerate(folder_list):
+                j = j.replace('\\', '/')
+                if folder == j:
+                    if self.fileName == names_list[i]:
+                        buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists in\n{folder}", QMessageBox.Ok, QMessageBox.Ok)
+                        return
+            passwords_json.append({
+                'path': [folder + '/' + self.fileName],
+                'name': [self.fileName],
+                'folder': [folder], #TODO this
+                'thickness': [self.metalThickness.currentText()],
+                'type': [self.metalType.currentText()],
+                'cut time': [self.txtCutTime.text()],
+                'bend time': [self.txtBendTime.text()],
+                'weight': [self.txtWeight.text()]
+                }
+            )
+            shutil.copyfile(self.filePath, folder + '/' + self.fileName)
+            # sort json file
+            sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
+            # Write to passwords file
+            with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
+                json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
+
+            with open(settings_dir + 'saved_data.json') as file:
+                saved_data = json.load(file)
+                for info in passwords_json:
+                    for path in info['path']:
+                        paths_list.append(path)
+                    for name in info['name']:
+                        names_list.append(name)
+                    for folder in info['folder']:
+                        folder_list.append(folder)
+                    for thickness in info['thickness']:
+                        metal_thickness_list.append(thickness)
+                    for metal_type in info['type']:
+                        metal_type_list.append(metal_type)
+                    for cut_time in info['cut time']:
+                        cut_time_list.append(cut_time)
+                    for bend_time in info['bend time']:
+                        bend_time_list.append(bend_time)
+                    for weight in info['weight']:
+                        weight_list.append(weight)
     def verify(self):
         self.filePath = self.filePath.replace('\\', '/')
         self.previewText.setPlainText(f"""Preview:
@@ -399,39 +400,48 @@ Price: {self.price}
                 self.pathList.insertItem(i, j)
                 self.filePath = j
                 self.verify()
+            self.pathList.setCurrentRow(0)
     def path_list_clicked(self):
-        item = self.pathList.currentItem()
-        self.filePath = item.text()
-        p = Path(self.filePath)
-        self.fileName = p.name
-        new_name = (os.path.splitext(self.fileName)[0])
-        output = cache_dir + new_name + ' - pdf.png'
-        self.pdf_location = output
-        if not os.path.exists(output):
-            pdffile = self.filePath
-            doc = fitz.open(pdffile)
-            page = doc.loadPage(0) #number of page
-            pix = page.getPixmap()
-            pix.writePNG(output)
-            pixmap = QPixmap(output)
-            tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
-            self.thumbnail.setIcon(QIcon(tn))
-            self.thumbnail.setIconSize(QSize(512,512))
-        else:
-            pixmap = QPixmap(output)
-            tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
-            self.thumbnail.setIcon(QIcon(tn))
-            self.thumbnail.setIconSize(QSize(512,512))
-        self.verify()
+        try:
+            item = self.pathList.currentItem()
+            self.filePath = item.text()
+            p = Path(self.filePath)
+            self.fileName = p.name
+            new_name = (os.path.splitext(self.fileName)[0])
+            output = cache_dir + new_name + ' - pdf.png'
+            self.pdf_location = output
+            if not os.path.exists(output):
+                pdffile = self.filePath
+                doc = fitz.open(pdffile)
+                page = doc.loadPage(0) #number of page
+                pix = page.getPixmap()
+                pix.writePNG(output)
+                pixmap = QPixmap(output)
+                tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                self.thumbnail.setIcon(QIcon(tn))
+                self.thumbnail.setIconSize(QSize(512,512))
+            else:
+                pixmap = QPixmap(output)
+                tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
+                self.thumbnail.setIcon(QIcon(tn))
+                self.thumbnail.setIconSize(QSize(512,512))
+            self.verify()
+        except:
+            print('No more elements')
     def open_tree_directory(self, directory):
         self.fs = Folder_Screeen(directory)
         self.fs.show()
     def btnAddFolder(self):
         text, okPressed = QInputDialog.getText(self, "Folder name","Name:", QLineEdit.Normal, "New Folder")
         if okPressed and text != '':
-            print(text)
             if not os.path.exists(files_dir + text):
                 os.makedirs(files_dir + text)
+                self.mm = MainMenu()
+                self.mm.show()
+                self.close()
+            else:
+                buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{text}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
+                return
         # options = QFileDialog.Options()
         # fileName, _ = QFileDialog.getOpenFileName(self,"Create Folder", "","All Files (*)", options=options)
         # if fileName:
@@ -445,7 +455,7 @@ class Folder_Screeen(QWidget):
         self.height = height
         directory_to_open = directory_to_open.replace("\\", "/")
         self.setWindowTitle(directory_to_open)
-        self.resize(self.width, self.height)
+        self.showMaximized()
 
         self.path = directory_to_open
         self.pathRoot = QDir.rootPath()
@@ -761,6 +771,7 @@ class view_image(QtWidgets.QWidget):
 
     def loadImage(self):
         self.viewer.setPhoto(QPixmap(self.image_to_open))
+        self.showMaximized()
 
     def pixInfo(self):
         self.viewer.toggleDragMode()
