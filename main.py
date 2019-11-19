@@ -476,6 +476,7 @@ Price: {self.price}
     def open_tree_directory(self, directory):
         self.fs = Folder_Screeen(directory)
         self.fs.show()
+        self.close()
     def contextMenuEvent(self, event):
         self.menu = QMenu(self)
         createFolder = QAction('Folder', self)
@@ -512,6 +513,15 @@ Price: {self.price}
         # fileName, _ = QFileDialog.getOpenFileName(self,"Create Folder", "","All Files (*)", options=options)
         # if fileName:
         #     print(fileName)
+    # def closeEvent(self, event):
+    #     close = QMessageBox.question(self,
+    #                                  "QUIT",
+    #                                  "Are you sure want to exit the program?",
+    #                                  QMessageBox.Yes | QMessageBox.No)
+    #     if close == QMessageBox.Yes:
+    #         event.accept()
+    #     else:
+    #         event.ignore()
 class Folder_Screeen(QWidget):
     def __init__(self, directory_to_open, parent = None):
         super(Folder_Screeen, self).__init__(parent)
@@ -520,9 +530,14 @@ class Folder_Screeen(QWidget):
         self.width = width
         self.height = height
         directory_to_open = directory_to_open.replace("\\", "/")
-        self.setWindowTitle(directory_to_open)
         self.showMaximized()
-
+        
+        directory_to_open = directory_to_open.replace('\\', '/')
+        directory_to_open = directory_to_open.split('/')
+        directory_to_open[0] = directory_to_open[0].capitalize()
+        directory_to_open = '/'.join(directory_to_open)
+        self.setWindowTitle(directory_to_open)
+        
         self.last_directory = directory_to_open
         self.path = directory_to_open
         self.pathRoot = QDir.rootPath()
@@ -572,13 +587,14 @@ class Folder_Screeen(QWidget):
         self.pdfText.setReadOnly(True)
 
         self.gridLayout = QGridLayout()
+        self.gridLayout.setColumnStretch(1, 4)
+        # self.gridLayout.setRowStretch(0, 2)
         self.gridLayout.addWidget(self.labelFileName, 0, 0)
         self.gridLayout.addWidget(self.btnBack, 2, 0)
         self.gridLayout.addWidget(self.txtSearch, 1, 0)
         self.gridLayout.addWidget(self.treeView, 3, 0)
-        self.gridLayout.setColumnStretch(3, 3)
+        self.gridLayout.addWidget(self.pdfText, 3, 1)
         self.gridLayout1 = QGridLayout()
-        self.gridLayout1.addWidget(self.pdfText, 0, 0)
         self.gridLayout1.addWidget(self.thumbnail, 0, 1)
 
         layout = QHBoxLayout(self)
@@ -586,8 +602,21 @@ class Folder_Screeen(QWidget):
         layout.addLayout(self.gridLayout1)
 
     def back(self):
-        self.path = self.last_directory
-        self.adjust_root_index()
+        temp = os.getcwd() + '/Files'
+        temp = temp.replace('\\', '/')
+        temp = temp.split('/')
+        temp[0] = temp[0].capitalize()
+        temp = '/'.join(temp)
+        if not temp == self.path:
+            a = self.path
+            a = a.replace('\\', '/')
+            a = a.split('/')
+            del a[-1]
+            a = '/'.join(a)
+            self.path = a
+            self.filePath = a
+            self.setWindowTitle(self.filePath)
+            self.adjust_root_index()
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
@@ -696,14 +725,15 @@ Price: {self.price}
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
-        self.pdf_location = ''
         self.setWindowTitle(self.filePath)
         
         if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
             self.path = self.filePath
             self.adjust_root_index()
             # root_index = self.model.index(self.path)
-            
+        elif self.fileName.lower().endswith(('.pdf', 'dfx')):
+            self.vi = view_image(self.pdf_location)
+            self.vi.show()
     def openImage(self):
         self.vi = view_image(self.pdf_location)
         self.vi.show()
@@ -758,12 +788,32 @@ Price: {self.price}
         if ix.column() == 0:
             menu = QMenu()
             menu.addAction("Rename")
-            menu.addAction("Folder")
+            menu.addAction("Delete")
             action = menu.exec_(self.treeView.mapToGlobal(point))
             if action:
                 if action.text() == "Rename":
                     self.treeView.edit(ix)
+                if action.text() == "Delete":
+                    # source_index = self.proxy_model.mapToSource(index)
+                    # indexItem = self.model.index(source_index.row(), 0, source_index.parent())
+                    # self.fileName = self.model.fileName(indexItem)
+                    # self.filePath = self.model.filePath(indexItem)
+                    if os.path.exists(self.filePath):
+                        try:
+                            os.remove(self.filePath)
+                        except Exception as e:
+                            buttonReply = QMessageBox.critical(self, 'Error!', f"{e}", QMessageBox.Ok, QMessageBox.Ok)
+                            return
+                    else:
+                        buttonReply = QMessageBox.warning(self, 'Doesn\'t Exist', f"\"{self.fileName}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
+                        return
     # TREE VIEW END ====================================
+
+    def closeEvent(self, event):
+        self.mm = MainMenu()
+        self.mm.setWindowTitle(title + ' ' + version)
+        self.mm.show()
+        self.close()
 # class view_iamge(QWidget):
 class PhotoViewer(QtWidgets.QGraphicsView):
     photoClicked = pyqtSignal(QPoint)
