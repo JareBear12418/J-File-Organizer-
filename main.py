@@ -5,14 +5,14 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5 import *
-from requests import Session
-from threading import Thread
-from functools import partial
-from os.path import expanduser
-from functools import partial
 from PIL import Image
 from time import sleep
 from pathlib import Path
+from requests import Session
+from threading import Thread
+from functools import partial
+from functools import partial
+from os.path import expanduser
 # pip install PyGTK / pip install giofile / pip install PyPDF2 / pip install PyMuPDF / pip install ezdxf
 import sys, os, getpass, subprocess, glob, shutil, PyPDF2, re, json, fitz
 title = ' Work Management'
@@ -217,6 +217,8 @@ class MainMenu(QWidget):
             open_directory = partial(self.open_tree_directory, p)
             p = p.replace(files_dir, '')
             self.btnOpen = QPushButton(p, self)
+            self.btnOpen.setStyleSheet('text-align: bottom')
+            # self.btnOpen.setAlignment(Qt.AlignCenter | Qt.AlignBottom)
             self.btnOpen.setIcon(QIcon('icons/folder.png'))
             self.btnOpen.setIconSize(QSize(64,64))
             self.btnOpen.resize(50, 50)
@@ -521,6 +523,7 @@ class Folder_Screeen(QWidget):
         self.setWindowTitle(directory_to_open)
         self.showMaximized()
 
+        self.last_directory = directory_to_open
         self.path = directory_to_open
         self.pathRoot = QDir.rootPath()
 
@@ -533,7 +536,9 @@ class Folder_Screeen(QWidget):
         self.thumbnail = QPushButton(self)
         self.thumbnail.setFlat(True)
         self.thumbnail.clicked.connect(self.openImage)
-
+        self.btnBack = QPushButton('Back', self)
+        self.btnBack.clicked.connect(self.back)
+        
         self.model = QFileSystemModel()
         self.model.setRootPath(QDir.rootPath())
         self.model.setFilter(QDir.NoDotAndDotDot | QDir.AllEntries | QDir.Dirs | QDir.Files)
@@ -550,6 +555,7 @@ class Folder_Screeen(QWidget):
 
         self.treeView.setRootIndex(self.indexRoot)
         self.treeView.clicked.connect(self.on_treeView_clicked)
+        self.treeView.doubleClicked.connect(self.treeMedia_doubleClicked)
         self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
         self.treeView.setAnimated(True)
         self.treeView.setIndentation(20)
@@ -560,14 +566,17 @@ class Folder_Screeen(QWidget):
         self.treeView.setEditTriggers(QTreeView.NoEditTriggers)
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView.customContextMenuRequested.connect(self.showContextMenu)
-
+        for i in range(1, self.treeView.model().columnCount()):
+            self.treeView.header().hideSection(i)
         self.pdfText = QPlainTextEdit(self)
         self.pdfText.setReadOnly(True)
 
         self.gridLayout = QGridLayout()
         self.gridLayout.addWidget(self.labelFileName, 0, 0)
+        self.gridLayout.addWidget(self.btnBack, 2, 0)
         self.gridLayout.addWidget(self.txtSearch, 1, 0)
         self.gridLayout.addWidget(self.treeView, 3, 0)
+        self.gridLayout.setColumnStretch(3, 3)
         self.gridLayout1 = QGridLayout()
         self.gridLayout1.addWidget(self.pdfText, 0, 0)
         self.gridLayout1.addWidget(self.thumbnail, 0, 1)
@@ -576,6 +585,9 @@ class Folder_Screeen(QWidget):
         layout.addLayout(self.gridLayout)
         layout.addLayout(self.gridLayout1)
 
+    def back(self):
+        self.path = self.last_directory
+        self.adjust_root_index()
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
@@ -679,7 +691,19 @@ Price: {self.price}
                     # self.pdfText.setPlainText(pageObj.extractText())
             except:
                 self.pdfText.setPlainText('Error reading "{}"'.format(self.fileName))
-
+    def treeMedia_doubleClicked(self,index):
+        source_index = self.proxy_model.mapToSource(index)
+        indexItem = self.model.index(source_index.row(), 0, source_index.parent())
+        self.fileName = self.model.fileName(indexItem)
+        self.filePath = self.model.filePath(indexItem)
+        self.pdf_location = ''
+        self.setWindowTitle(self.filePath)
+        
+        if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
+            self.path = self.filePath
+            self.adjust_root_index()
+            # root_index = self.model.index(self.path)
+            
     def openImage(self):
         self.vi = view_image(self.pdf_location)
         self.vi.show()
