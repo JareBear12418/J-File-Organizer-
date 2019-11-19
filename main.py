@@ -128,14 +128,24 @@ class MainMenu(QWidget):
         # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
         # dirs = [os.path.join(r,file) for r,d,f in os.walk(files_dir) for file in f]
         # dirs = [os.path.abspath(x) for x in os.listdir(files_dir)]
-        dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
-        for i, j in enumerate(dirs):
-            global files_dir
+        # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
+        global files_dir
+        # dirs = [x[0] for x in os.walk(files_dir)]
+        # dirs = [fname.rsplit('.', 1)[0] for fname in os.listdir(files_dir)]
+        d = files_dir
+        dirs = [os.path.join(d, o) for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))]
+        dirs2 = []
+        for i, d in enumerate(dirs):
+            dirs2.append([os.path.join(d, o) for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))])
+        flat = [x for sublist in dirs2 for x in sublist]
+        flat = dirs + flat
+        for i, j in enumerate(flat):
             j = j.replace('\\', '/')
             files_dir = files_dir.replace('\\', '/')
-            self.folderToImport.addItem(files_dir + j)
+            self.folderToImport.addItem(j)
             self.folderToImport.setItemIcon(i,QIcon('icons/folder.png'))
         self.gridLayoutImport.addWidget(self.folderToImport, 0, 1)
+
 
         self.label = QLabel('Thickness:', self)
         self.gridLayoutImport.addWidget(self.label, 1, 0)
@@ -232,6 +242,14 @@ class MainMenu(QWidget):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
         with open(settings_dir + 'saved_data.json') as file:
             saved_data = json.load(file)
+            paths_list.clear()
+            names_list.clear()
+            folder_list.clear()
+            weight_list.clear()
+            cut_time_list.clear()
+            bend_time_list.clear()
+            metal_type_list.clear()
+            metal_thickness_list.clear()
             for info in passwords_json:
                 for path in info['path']:
                     paths_list.append(path)
@@ -250,6 +268,7 @@ class MainMenu(QWidget):
                 for weight in info['weight']:
                     weight_list.append(weight)
         folder = self.folderToImport.currentText().replace('\\', '/')
+        folder = folder + '/' +  self.metalThickness.currentText()
         for i, j in enumerate(folder_list):
             j = j.replace('\\', '/')
             if folder == j:
@@ -268,7 +287,10 @@ class MainMenu(QWidget):
             'weight': [self.txtWeight.text()]
             }
         )
-        shutil.copyfile(self.filePath, folder + '/' + self.fileName)
+        file_copy_location = folder + '/'
+        if not os.path.exists(file_copy_location):
+            os.makedirs(file_copy_location)
+        shutil.copyfile(self.filePath, file_copy_location + self.fileName)
         # sort json file
         sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
         # Write to passwords file
@@ -294,12 +316,20 @@ class MainMenu(QWidget):
                     bend_time_list.append(bend_time)
                 for weight in info['weight']:
                     weight_list.append(weight)
-        
+
         self.pathList.setCurrentRow(self.pathList.currentRow() + 1)
     def import_all_pdf(self):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
         with open(settings_dir + 'saved_data.json') as file:
             saved_data = json.load(file)
+            paths_list.clear()
+            names_list.clear()
+            folder_list.clear()
+            weight_list.clear()
+            cut_time_list.clear()
+            bend_time_list.clear()
+            metal_type_list.clear()
+            metal_thickness_list.clear()
             for info in passwords_json:
                 for path in info['path']:
                     paths_list.append(path)
@@ -329,6 +359,7 @@ class MainMenu(QWidget):
                 if folder == j:
                     if self.fileName == names_list[i]:
                         buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists in\n{folder}", QMessageBox.Ok, QMessageBox.Ok)
+                        self.pathList.setCurrentRow(self.pathList.currentRow() + 1)
                         return
             passwords_json.append({
                 'path': [folder + '/' + self.fileName],
@@ -341,40 +372,51 @@ class MainMenu(QWidget):
                 'weight': [self.txtWeight.text()]
                 }
             )
-            shutil.copyfile(self.filePath, folder + '/' + self.fileName)
+            file_copy_location = folder + '/' + self.metalThickness.currentText() + '/'
+            if not os.path.exists(file_copy_location):
+                os.makedirs(file_copy_location)
+            shutil.copyfile(self.filePath, file_copy_location + self.fileName)
             self.pathList.setCurrentRow(readedFileList.index(self.filePath))
             # sort json file
-        sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
-        # Write to passwords file
-        with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
-            json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
+            sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
+            # Write to passwords file
+            with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
+                json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
 
-        with open(settings_dir + 'saved_data.json') as file:
-            saved_data = json.load(file)
-            for info in passwords_json:
-                for path in info['path']:
-                    paths_list.append(path)
-                for name in info['name']:
-                    names_list.append(name)
-                for folder in info['folder']:
-                    folder_list.append(folder)
-                for thickness in info['thickness']:
-                    metal_thickness_list.append(thickness)
-                for metal_type in info['type']:
-                    metal_type_list.append(metal_type)
-                for cut_time in info['cut time']:
-                    cut_time_list.append(cut_time)
-                for bend_time in info['bend time']:
-                    bend_time_list.append(bend_time)
-                for weight in info['weight']:
-                    weight_list.append(weight)
+            with open(settings_dir + 'saved_data.json') as file:
+                saved_data = json.load(file)
+                paths_list.clear()
+                names_list.clear()
+                folder_list.clear()
+                weight_list.clear()
+                cut_time_list.clear()
+                bend_time_list.clear()
+                metal_type_list.clear()
+                metal_thickness_list.clear()
+                for info in passwords_json:
+                    for path in info['path']:
+                        paths_list.append(path)
+                    for name in info['name']:
+                        names_list.append(name)
+                    for folder in info['folder']:
+                        folder_list.append(folder)
+                    for thickness in info['thickness']:
+                        metal_thickness_list.append(thickness)
+                    for metal_type in info['type']:
+                        metal_type_list.append(metal_type)
+                    for cut_time in info['cut time']:
+                        cut_time_list.append(cut_time)
+                    for bend_time in info['bend time']:
+                        bend_time_list.append(bend_time)
+                    for weight in info['weight']:
+                        weight_list.append(weight)
     def verify(self):
         self.filePath = self.filePath.replace('\\', '/')
         self.previewText.setPlainText(f"""Preview:
 File Name: {self.fileName}
 File Path: {self.filePath}
 
-Selected Folder: {self.folderToImport.currentText()}
+Selected Folder: {self.folderToImport.currentText() + '/' + self.metalThickness.currentText()}
 
 Selected Metal Thickness: {self.metalThickness.currentText()}
 Selected Metal Type: {self.metalType.currentText()}
@@ -432,6 +474,27 @@ Price: {self.price}
     def open_tree_directory(self, directory):
         self.fs = Folder_Screeen(directory)
         self.fs.show()
+    def contextMenuEvent(self, event):
+        self.menu = QMenu(self)
+        createFolder = QAction('Folder', self)
+        deleteFolder = QAction('Delete', self)
+        createFolder.triggered.connect(self.btnAddFolder)
+        deleteFolder.triggered.connect(self.btnDeleteFolder)
+        self.menu.addAction(createFolder)
+        self.menu.addAction(deleteFolder)
+        # add other required actions
+        self.menu.popup(QCursor.pos())
+    def btnDeleteFolder(self):
+        text, okPressed = QInputDialog.getText(self, "Folder name","Name:", QLineEdit.Normal, "")
+        if okPressed and text != '':
+            if os.path.exists(files_dir + text):
+                shutil.rmtree(files_dir + text, ignore_errors=True)
+                self.mm = MainMenu()
+                self.mm.show()
+                self.close()
+            else:
+                buttonReply = QMessageBox.warning(self, 'Doesn\'t Exist', f"\"{text}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
+                return
     def btnAddFolder(self):
         text, okPressed = QInputDialog.getText(self, "Folder name","Name:", QLineEdit.Normal, "New Folder")
         if okPressed and text != '':
@@ -514,8 +577,6 @@ class Folder_Screeen(QWidget):
         layout.addLayout(self.gridLayout1)
 
     # TREE VIEW START ====================================
-
-
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
         self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
@@ -673,6 +734,7 @@ Price: {self.price}
         if ix.column() == 0:
             menu = QMenu()
             menu.addAction("Rename")
+            menu.addAction("Folder")
             action = menu.exec_(self.treeView.mapToGlobal(point))
             if action:
                 if action.text() == "Rename":
