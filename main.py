@@ -70,9 +70,18 @@ all_metal_thicknesses_inches = [
                                 '0.0157']
 all_metal_types = ['Steel',
                    'Stainless Steel']
+class HoverButton(QPushButton):
+    def __init__(self, name, parent=None):
+        self.name = name
+        QPushButton.__init__(self, name, parent)
+        self.setMouseTracking(True)
+        
+    def mouseMoveEvent(self, event):
+        print (self.name)
 class MainMenu(QWidget):
     def __init__(self, parent = None):
         super(MainMenu, self).__init__(parent)
+        self.setMouseTracking(True)
         # subprocess.Popen(['test.pdf'],shell=True)
         # creating an object
         self.last_pos_x = 0
@@ -231,14 +240,30 @@ class MainMenu(QWidget):
             p = files_dir + dirs[i]
             open_directory = partial(self.open_tree_directory, p)
             p = p.replace(files_dir, '')
-            self.btnOpen = QPushButton(p, self)
+            self.btnOpen = HoverButton(p)
             self.btnOpen.setStyleSheet('text-align: bottom')
+            self.btnOpen.setFlat(True)
             # self.btnOpen.setAlignment(Qt.AlignCenter | Qt.AlignBottom)
+            # set button context menu policy
+            self.btnOpen.setContextMenuPolicy(Qt.CustomContextMenu)
+            self.btnOpen.customContextMenuRequested.connect(self.btnOpenContextMenu)
+
+            # create context menu
+            self.btnOpenPopup = QMenu(self)
+            createFolder = QAction('Add folder', self)
+            btnAdd_directory = partial(self.btnAddFolder, p + '/')
+            createFolder.triggered.connect(btnAdd_directory)
+            self.btnOpenPopup.addAction(createFolder)
+            # self.btnOpenPopup.addAction(QAction('Add folder', self))
+            # self.btnOpenPopup.addAction(QAction('Delete', self))
+            # self.btnOpen.addAction(QAction('test1', self))
+            # self.btnOpen.addSeparator()
+            # self.btnOpen.addAction(QAction('test2', self))
             self.btnOpen.setIcon(QIcon('icons/folder.png'))
             self.btnOpen.setIconSize(QSize(64,64))
             self.btnOpen.resize(50, 50)
             self.btnOpen.clicked.connect(open_directory)
-            self.gridLayoutButtons.addWidget(self.btnOpen, j, k, 1, 1)
+            self.gridLayoutButtons.addWidget(self.btnOpen, j, k)
             k += 1
             if k > 2:
                 k = 0
@@ -264,9 +289,6 @@ class MainMenu(QWidget):
 
         self.txtSearch = QLineEdit(self)
         self.txtSearch.textChanged.connect(self.on_textChanged)
-        self.thumbnail = QPushButton(self)
-        self.thumbnail.setFlat(True)
-        self.thumbnail.clicked.connect(self.openImage)
         self.btnBack = QPushButton('Back', self)
         self.btnBack.clicked.connect(self.back)
 
@@ -299,9 +321,6 @@ class MainMenu(QWidget):
         self.treeView.customContextMenuRequested.connect(self.showContextMenu)
         for i in range(1, self.treeView.model().columnCount()):
             self.treeView.header().hideSection(i)
-        self.pdfText = QPlainTextEdit(self)
-        self.pdfText.setReadOnly(True)
-
         self.gridLayout = QGridLayout()
         self.gridLayout.setColumnStretch(1, 4)
         # self.gridLayout.setRowStretch(0, 2)
@@ -309,9 +328,7 @@ class MainMenu(QWidget):
         self.gridLayout.addWidget(self.btnBack, 2, 0)
         self.gridLayout.addWidget(self.txtSearch, 1, 0)
         self.gridLayout.addWidget(self.treeView, 3, 0)
-        self.gridLayout.addWidget(self.pdfText, 3, 1)
         self.gridLayout1 = QGridLayout()
-        self.gridLayout1.addWidget(self.thumbnail, 0, 1)
 
         layout = QHBoxLayout(self)
         layout.addLayout(self.gridLayout)
@@ -361,8 +378,17 @@ class MainMenu(QWidget):
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
-        self.pdf_location = ''
+        # self.pdf_location = ''
         self.setWindowTitle(self.filePath)
+        if self.fileName.endswith('.dxf') or self.fileName.endswith('.DXF'):
+            new_name = (os.path.splitext(self.fileName)[0])
+            output = cache_dir + new_name + ' - dxf.png'
+            self.pdf_location = output
+        if self.fileName.endswith('.pdf') or self.fileName.endswith('.PDF'):
+            new_name = (os.path.splitext(self.fileName)[0])
+            output = cache_dir + new_name + ' - pdf.png'
+            self.pdf_location = output
+
 
     def treeMedia_doubleClicked(self,index):
         source_index = self.proxy_model.mapToSource(index)
@@ -374,9 +400,6 @@ class MainMenu(QWidget):
         if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
             self.path = self.filePath
             self.adjust_root_index()
-            # root_index = self.model.index(self.path)
-        elif self.fileName.lower().endswith(('.pdf', '.dfx')):
-            self.openImage()
     def openImage(self):
         self.vi = view_image(self.pdf_location)
         self.vi.show()
@@ -430,22 +453,16 @@ class MainMenu(QWidget):
         self.on_treeView_clicked(ix)
         if ix.column() == 0:
             menu = QMenu()
-            menu.addAction("Rename")
-            menu.addAction("Delete")
+            menu.addAction("Create folder")
+            menu.addAction("View")
             action = menu.exec_(self.treeView.mapToGlobal(point))
             if action:
-                if action.text() == "Rename":
-                    self.treeView.edit(ix)
-                if action.text() == "Delete":
-                    if os.path.exists(self.filePath):
-                        try:
-                            os.remove(self.filePath)
-                        except Exception as e:
-                            buttonReply = QMessageBox.critical(self, 'Error!', "Need Administrator privileges to delete files.", QMessageBox.Ok, QMessageBox.Ok)
-                            return
-                    else:
-                        buttonReply = QMessageBox.warning(self, 'Error!', f"\"{self.fileName}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
-                        return
+                if action.text() == "View":
+                    if self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx')):
+                        self.openImage()
+                if action.text() == "Create folder":
+                    if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
+                        self.treeView.edit(ix)
     # TREE VIEW END ====================================
     def import_pdf(self):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
@@ -686,12 +703,10 @@ Price: {self.price}
         self.close()
     def contextMenuEvent(self, event):
         self.menu = QMenu(self)
-        createFolder = QAction('Folder', self)
-        deleteFolder = QAction('Delete', self)
-        createFolder.triggered.connect(self.btnAddFolder)
-        deleteFolder.triggered.connect(self.btnDeleteFolder)
+        createFolder = QAction('Create Folder', self)
+        btnAdd_directory = partial(self.btnAddFolder, '')
+        createFolder.triggered.connect(btnAdd_directory)
         self.menu.addAction(createFolder)
-        self.menu.addAction(deleteFolder)
         # add other required actions
         self.menu.popup(QCursor.pos())
     def btnDeleteFolder(self):
@@ -705,17 +720,28 @@ Price: {self.price}
             else:
                 buttonReply = QMessageBox.warning(self, 'Doesn\'t Exist', f"\"{text}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
                 return
-    def btnAddFolder(self):
+    def btnAddFolder(self, direc):
         text, okPressed = QInputDialog.getText(self, "Folder name","Name:", QLineEdit.Normal, "New Folder")
         if okPressed and text != '':
             if not os.path.exists(files_dir + text):
-                os.makedirs(files_dir + text)
-                self.mm = MainMenu()
-                self.mm.show()
-                self.close()
+                if direc == '':
+                    os.makedirs(files_dir + text)
+                    self.mm = MainMenu()
+                    self.mm.show()
+                    self.close()
+                else:
+                    print(direc)
+                    os.makedirs(files_dir + direc + text)
+                    self.mm = MainMenu()
+                    self.mm.show()
+                    self.close()
             else:
                 buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{text}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
                 return
+    
+    def btnOpenContextMenu(self, point):
+        # show context menu
+        self.btnOpenPopup.exec_(QCursor.pos())
         # options = QFileDialog.Options()
         # fileName, _ = QFileDialog.getOpenFileName(self,"Create Folder", "","All Files (*)", options=options)
         # if fileName:
