@@ -237,9 +237,11 @@ class MainMenu(QWidget):
         tabHomehbox.addWidget(self.btnAddConnection)
         # tabHomehbox.addWidget(self.messageText)
         tabHome.setLayout(tabHomehbox)
+        tabBatches = QWidget()
 
         self.bottomLeftTabWidget.addTab(tabHome, "&Home")
         self.bottomLeftTabWidget.addTab(tabImport, "&Import")
+        self.bottomLeftTabWidget.addTab(tabBatches, "&Batches")
     def import_pdf(self):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
         with open(settings_dir + 'saved_data.json') as file:
@@ -531,13 +533,13 @@ class Folder_Screeen(QWidget):
         self.height = height
         directory_to_open = directory_to_open.replace("\\", "/")
         self.showMaximized()
-        
+
         directory_to_open = directory_to_open.replace('\\', '/')
         directory_to_open = directory_to_open.split('/')
         directory_to_open[0] = directory_to_open[0].capitalize()
         directory_to_open = '/'.join(directory_to_open)
         self.setWindowTitle(directory_to_open)
-        
+
         self.last_directory = directory_to_open
         self.path = directory_to_open
         self.pathRoot = QDir.rootPath()
@@ -553,7 +555,7 @@ class Folder_Screeen(QWidget):
         self.thumbnail.clicked.connect(self.openImage)
         self.btnBack = QPushButton('Back', self)
         self.btnBack.clicked.connect(self.back)
-        
+
         self.model = QFileSystemModel()
         self.model.setRootPath(QDir.rootPath())
         self.model.setFilter(QDir.NoDotAndDotDot | QDir.AllEntries | QDir.Dirs | QDir.Files)
@@ -726,14 +728,13 @@ Price: {self.price}
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
         self.setWindowTitle(self.filePath)
-        
+
         if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
             self.path = self.filePath
             self.adjust_root_index()
             # root_index = self.model.index(self.path)
-        elif self.fileName.lower().endswith(('.pdf', 'dfx')):
-            self.vi = view_image(self.pdf_location)
-            self.vi.show()
+        elif self.fileName.lower().endswith(('.pdf', '.dfx')):
+            self.openImage()
     def openImage(self):
         self.vi = view_image(self.pdf_location)
         self.vi.show()
@@ -794,18 +795,14 @@ Price: {self.price}
                 if action.text() == "Rename":
                     self.treeView.edit(ix)
                 if action.text() == "Delete":
-                    # source_index = self.proxy_model.mapToSource(index)
-                    # indexItem = self.model.index(source_index.row(), 0, source_index.parent())
-                    # self.fileName = self.model.fileName(indexItem)
-                    # self.filePath = self.model.filePath(indexItem)
                     if os.path.exists(self.filePath):
                         try:
                             os.remove(self.filePath)
                         except Exception as e:
-                            buttonReply = QMessageBox.critical(self, 'Error!', f"{e}", QMessageBox.Ok, QMessageBox.Ok)
+                            buttonReply = QMessageBox.critical(self, 'Error!', "Need Administrator privileges to delete files.", QMessageBox.Ok, QMessageBox.Ok)
                             return
                     else:
-                        buttonReply = QMessageBox.warning(self, 'Doesn\'t Exist', f"\"{self.fileName}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
+                        buttonReply = QMessageBox.warning(self, 'Error!', f"\"{self.fileName}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
                         return
     # TREE VIEW END ====================================
 
@@ -891,6 +888,7 @@ class view_image(QtWidgets.QWidget):
     def __init__(self, directory_to_open):
         super(view_image, self).__init__()
         self.image_to_open = directory_to_open
+        directory_to_open = directory_to_open.replace('\\','/')
         self.setWindowTitle(directory_to_open)
         self.viewer = PhotoViewer(self)
         # self.resize(width, height)
