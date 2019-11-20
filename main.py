@@ -190,7 +190,7 @@ class MainMenu(QWidget):
         self.gridLayoutImport.addWidget(self.label, 5, 0)
         self.txtWeight.textChanged.connect(self.verify)
         self.gridLayoutImport.addWidget(self.txtWeight, 5, 1)
-        
+
         self.gridLayoutButtons2 = QGridLayout()
         self.gridLayoutButtons2.addWidget(self.btnImport, 0, 0)
         self.gridLayoutButtons2.addWidget(self.btnImportAll, 0, 1)
@@ -254,9 +254,199 @@ class MainMenu(QWidget):
         tabHome.setLayout(tabHomehbox)
         tabBatches = QWidget()
 
+        self.path = files_dir
+
+        self.pathRoot = QDir.rootPath()
+
+        self.labelFileName = QLabel(self)
+        self.labelFileName.setText("Search:")
+        self.labelFileName.resize(100, 30)
+
+        self.txtSearch = QLineEdit(self)
+        self.txtSearch.textChanged.connect(self.on_textChanged)
+        self.thumbnail = QPushButton(self)
+        self.thumbnail.setFlat(True)
+        self.thumbnail.clicked.connect(self.openImage)
+        self.btnBack = QPushButton('Back', self)
+        self.btnBack.clicked.connect(self.back)
+
+        self.model = QFileSystemModel()
+        self.model.setRootPath(QDir.rootPath())
+        self.model.setFilter(QDir.NoDotAndDotDot | QDir.AllEntries | QDir.Dirs | QDir.Files)
+        self.proxy_model = QSortFilterProxyModel(recursiveFilteringEnabled = True, filterRole = QFileSystemModel.FileNameRole)
+        self.proxy_model.setSourceModel(self.model)
+        self.model.setReadOnly(False)
+        self.model.setNameFilterDisables(False)
+
+        self.indexRoot = self.model.index(self.model.rootPath())
+
+        self.treeView = QTreeView(self)
+        self.treeView.setModel(self.proxy_model)
+        self.adjust_root_index()
+
+        self.treeView.setRootIndex(self.indexRoot)
+        self.treeView.clicked.connect(self.on_treeView_clicked)
+        self.treeView.doubleClicked.connect(self.treeMedia_doubleClicked)
+        self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
+        self.treeView.setAnimated(True)
+        self.treeView.setIndentation(20)
+        self.treeView.setSortingEnabled(True)
+        self.treeView.setDragEnabled(True)
+        self.treeView.setAcceptDrops(True)
+        self.treeView.setDropIndicatorShown(True)
+        self.treeView.setEditTriggers(QTreeView.NoEditTriggers)
+        self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.treeView.customContextMenuRequested.connect(self.showContextMenu)
+        for i in range(1, self.treeView.model().columnCount()):
+            self.treeView.header().hideSection(i)
+        self.pdfText = QPlainTextEdit(self)
+        self.pdfText.setReadOnly(True)
+
+        self.gridLayout = QGridLayout()
+        self.gridLayout.setColumnStretch(1, 4)
+        # self.gridLayout.setRowStretch(0, 2)
+        self.gridLayout.addWidget(self.labelFileName, 0, 0)
+        self.gridLayout.addWidget(self.btnBack, 2, 0)
+        self.gridLayout.addWidget(self.txtSearch, 1, 0)
+        self.gridLayout.addWidget(self.treeView, 3, 0)
+        self.gridLayout.addWidget(self.pdfText, 3, 1)
+        self.gridLayout1 = QGridLayout()
+        self.gridLayout1.addWidget(self.thumbnail, 0, 1)
+
+        layout = QHBoxLayout(self)
+        layout.addLayout(self.gridLayout)
+        layout.addLayout(self.gridLayout1)
+        tabBatches.setLayout(layout)
         self.bottomLeftTabWidget.addTab(tabHome, "&Home")
         self.bottomLeftTabWidget.addTab(tabImport, "&Import")
         self.bottomLeftTabWidget.addTab(tabBatches, "&Batches")
+
+    def back(self):
+        temp = os.getcwd() + '/Files'
+        temp = temp.replace('\\', '/')
+        temp = temp.split('/')
+        temp[0] = temp[0].capitalize()
+        temp = '/'.join(temp)
+        if not temp == self.path:
+            a = self.path
+            a = a.replace('\\', '/')
+            a = a.split('/')
+            del a[-1]
+            a = '/'.join(a)
+            self.path = a
+            self.filePath = a
+            self.setWindowTitle(self.filePath)
+            self.adjust_root_index()
+    # TREE VIEW START ====================================
+    @QtCore.pyqtSlot(str)
+    def on_textChanged(self):
+        self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
+        self.adjust_root_index()
+
+    def adjust_root_index(self):
+        root_index = self.model.index(self.path)
+        proxy_index = self.proxy_model.mapFromSource(root_index)
+        self.treeView.setRootIndex(proxy_index)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            if self.lineEditFilePath.text() != '':
+                os.remove(self.lineEditFilePath.text())
+
+    @QtCore.pyqtSlot(QtCore.QModelIndex)
+    def on_treeView_clicked(self, index):
+        global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
+
+        source_index = self.proxy_model.mapToSource(index)
+        indexItem = self.model.index(source_index.row(), 0, source_index.parent())
+        self.fileName = self.model.fileName(indexItem)
+        self.filePath = self.model.filePath(indexItem)
+        self.pdf_location = ''
+        self.setWindowTitle(self.filePath)
+
+    def treeMedia_doubleClicked(self,index):
+        source_index = self.proxy_model.mapToSource(index)
+        indexItem = self.model.index(source_index.row(), 0, source_index.parent())
+        self.fileName = self.model.fileName(indexItem)
+        self.filePath = self.model.filePath(indexItem)
+        self.setWindowTitle(self.filePath)
+
+        if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
+            self.path = self.filePath
+            self.adjust_root_index()
+            # root_index = self.model.index(self.path)
+        elif self.fileName.lower().endswith(('.pdf', '.dfx')):
+            self.openImage()
+    def openImage(self):
+        self.vi = view_image(self.pdf_location)
+        self.vi.show()
+    def dragEnterEvent(self, event):
+        m = event.mimeData()
+        if m.hasUrls():
+            for url in m.urls():
+                if url.isLocalFile():
+                    event.accept()
+                    return
+        event.ignore()
+
+    def dropEvent(self, event):
+        if event.source():
+            QTreeView.dropEvent(self, event)
+        else:
+            ix = self.indexAt(event.pos())
+            if not self.model().isDir(ix):
+                ix = ix.parent()
+            pathDir = self.model().filePath(ix)
+            m = event.mimeData()
+            if m.hasUrls():
+                urlLocals = [url for url in m.urls() if url.isLocalFile()]
+                accepted = False
+                for urlLocal in urlLocals:
+                    path = urlLocal.toLocalFile()
+                    info = QFileInfo(path)
+                    n_path = QDir(pathDir).filePath(info.fileName())
+                    o_path = info.absoluteFilePath()
+                    if n_path == o_path:
+                        continue
+                    if info.isDir():
+                        QDir().rename(o_path, n_path)
+                    else:
+                        qfile = QFile(o_path)
+                        if QFile(n_path).exists():
+                            n_path += "(copy)"
+                        qfile.rename(n_path)
+                    accepted = True
+                if accepted:
+                    event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls:
+            event.setDropAction(Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+    def showContextMenu(self, point):
+        ix = self.treeView.indexAt(point)
+        self.on_treeView_clicked(ix)
+        if ix.column() == 0:
+            menu = QMenu()
+            menu.addAction("Rename")
+            menu.addAction("Delete")
+            action = menu.exec_(self.treeView.mapToGlobal(point))
+            if action:
+                if action.text() == "Rename":
+                    self.treeView.edit(ix)
+                if action.text() == "Delete":
+                    if os.path.exists(self.filePath):
+                        try:
+                            os.remove(self.filePath)
+                        except Exception as e:
+                            buttonReply = QMessageBox.critical(self, 'Error!', "Need Administrator privileges to delete files.", QMessageBox.Ok, QMessageBox.Ok)
+                            return
+                    else:
+                        buttonReply = QMessageBox.warning(self, 'Error!', f"\"{self.fileName}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
+                        return
+    # TREE VIEW END ====================================
     def import_pdf(self):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
         with open(settings_dir + 'saved_data.json') as file:
