@@ -53,6 +53,21 @@ all_metal_thicknesses = ['8',
                          '26',
                          '28',
                          '30']
+all_metal_thicknesses_inches = [
+                                '0.1681',
+                                '0.1532',
+                                '0.1382',
+                                '0.1233',
+                                '0.1084',
+                                '0.0785',
+                                '0.0635',
+                                '0.0516',
+                                '0.0396',
+                                '0.0336',
+                                '0.0276',
+                                '0.0217',
+                                '0.0187',
+                                '0.0157']
 all_metal_types = ['Steel',
                    'Stainless Steel']
 class MainMenu(QWidget):
@@ -150,7 +165,7 @@ class MainMenu(QWidget):
         self.label = QLabel('Thickness:', self)
         self.gridLayoutImport.addWidget(self.label, 1, 0)
         for i, j in enumerate(all_metal_thicknesses):
-            self.metalThickness.addItem(j)
+            self.metalThickness.addItem(j + ' Gauge')
         self.metalThickness.currentTextChanged.connect(self.verify)
         self.gridLayoutImport.addWidget(self.metalThickness, 1, 1)
 
@@ -175,14 +190,13 @@ class MainMenu(QWidget):
         self.gridLayoutImport.addWidget(self.label, 5, 0)
         self.txtWeight.textChanged.connect(self.verify)
         self.gridLayoutImport.addWidget(self.txtWeight, 5, 1)
-
+        
         self.gridLayoutButtons2 = QGridLayout()
         self.gridLayoutButtons2.addWidget(self.btnImport, 0, 0)
         self.gridLayoutButtons2.addWidget(self.btnImportAll, 0, 1)
         self.btnSelectPDF = QPushButton('Select PDF',self)
         self.btnSelectPDF.clicked.connect(self.find_pdf)
         self.gridLayoutButtons2.addWidget(self.btnSelectPDF, 0, 2)
-        # self.gridLayoutImpor.addWidget(self.btnImport, 5, 0)
 
         # ======================== GRID PREVIEW ==========================
         self.gridLayoutPreview = QGridLayout()
@@ -196,6 +210,7 @@ class MainMenu(QWidget):
         self.gridLayoutPreview.addWidget(self.pathList, 0, 2)
 
         self.layout2 = QVBoxLayout(self)
+        self.gridLayoutImport.setColumnStretch(3, 3)
         self.layout2.addLayout(self.gridLayoutImport)
         self.layout2.addLayout(self.gridLayoutPreview)
         self.layout2.addLayout(self.gridLayoutButtons2)
@@ -681,8 +696,12 @@ class Folder_Screeen(QWidget):
                     new_name = (os.path.splitext(self.fileName)[0])
                     output = cache_dir + new_name + ' - pdf.png'
                     self.pdf_location = output
-                    for i, j in enumerate(names_list):
-                        if self.fileName == j:
+                    for i, j in enumerate(paths_list):
+                        j = j.replace('\\', '/')
+                        j = j.split('/')
+                        j[0] = j[0].capitalize()
+                        j = '/'.join(j)
+                        if self.filePath == j:
                             self.price = ''
                             self.pdfText.setPlainText(f"""Preview:
 File Name: {j}
