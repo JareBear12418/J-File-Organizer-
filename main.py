@@ -37,7 +37,9 @@ bend_time_list = []
 weight_list = []
 # price_list = []
 # JSON DATA END ================
-
+# MISC VAR START ==============
+last_hovered_file = ''
+# MISC VAR EMD ==============
 
 all_metal_thicknesses = ['8',
                          '9',
@@ -72,16 +74,21 @@ all_metal_types = ['Steel',
                    'Stainless Steel']
 class HoverButton(QPushButton):
     def __init__(self, name, parent=None):
-        self.name = name
+        global last_hovered_file
         QPushButton.__init__(self, name, parent)
+        self.name = name
+        last_hovered_file = self.name
         self.setMouseTracking(True)
-        
+
     def mouseMoveEvent(self, event):
-        print (self.name)
+        global last_hovered_file
+        last_hovered_file = self.name
+        # self.parent().lastHoverdButton = self.hoverdButton
+        # print(self.name)
 class MainMenu(QWidget):
     def __init__(self, parent = None):
         super(MainMenu, self).__init__(parent)
-        self.setMouseTracking(True)
+        global last_hovered_file
         # subprocess.Popen(['test.pdf'],shell=True)
         # creating an object
         self.last_pos_x = 0
@@ -92,7 +99,7 @@ class MainMenu(QWidget):
         self.width = width
         self.height = height
         self.showMaximized()
-
+        # self.lastHoverdButton = last_hovered_file
         self.filePath = ''
         self.fileName = ''
         self.price = ''
@@ -131,7 +138,9 @@ class MainMenu(QWidget):
         self.gridLayoutImport.setRowStretch(0, 0)
         self.previewText = QPlainTextEdit(self)
         self.metalThickness = QComboBox(self)
+        self.metalThickness.setFont(QFont('Calibri', 14))
         self.metalType = QComboBox(self)
+        self.metalType.setFont(QFont('Calibri', 14))
         self.txtCutTime = QLineEdit(self)
         self.txtCutTime.setValidator(QDoubleValidator(self))
         self.txtBendTime = QLineEdit(self)
@@ -148,6 +157,7 @@ class MainMenu(QWidget):
         self.label = QLabel('Folder:', self)
         self.gridLayoutImport.addWidget(self.label, 0, 0)
         self.folderToImport = QComboBox(self)
+        self.folderToImport.setFont(QFont('Calibri', 14))
         self.folderToImport.currentTextChanged.connect(self.verify)
         # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
         # dirs = [os.path.join(r,file) for r,d,f in os.walk(files_dir) for file in f]
@@ -240,7 +250,7 @@ class MainMenu(QWidget):
             p = files_dir + dirs[i]
             open_directory = partial(self.open_tree_directory, p)
             p = p.replace(files_dir, '')
-            self.btnOpen = HoverButton(p)
+            self.btnOpen = HoverButton(p,self)
             self.btnOpen.setStyleSheet('text-align: bottom')
             self.btnOpen.setFlat(True)
             # self.btnOpen.setAlignment(Qt.AlignCenter | Qt.AlignBottom)
@@ -251,7 +261,7 @@ class MainMenu(QWidget):
             # create context menu
             self.btnOpenPopup = QMenu(self)
             createFolder = QAction('Add folder', self)
-            btnAdd_directory = partial(self.btnAddFolder, p + '/')
+            btnAdd_directory = partial(self.btnAddFolder, True)
             createFolder.triggered.connect(btnAdd_directory)
             self.btnOpenPopup.addAction(createFolder)
             # self.btnOpenPopup.addAction(QAction('Add folder', self))
@@ -268,13 +278,13 @@ class MainMenu(QWidget):
             if k > 2:
                 k = 0
                 j += 1
-        self.btnAddConnection = QPushButton('Add', self)
-        self.btnAddConnection.clicked.connect(self.btnAddFolder)
+        # self.btnAddConnection = QPushButton('Add', self)
+        # self.btnAddConnection.clicked.connect(self.btnAddFolder)
 
         tabHomehbox = QVBoxLayout()
         tabHomehbox.addLayout(self.gridLayoutButtons)
         tabHomehbox.setContentsMargins(5, 5, 5, 5)
-        tabHomehbox.addWidget(self.btnAddConnection)
+        # tabHomehbox.addWidget(self.btnAddConnection)
         # tabHomehbox.addWidget(self.messageText)
         tabHome.setLayout(tabHomehbox)
         tabBatches = QWidget()
@@ -337,7 +347,7 @@ class MainMenu(QWidget):
         self.bottomLeftTabWidget.addTab(tabHome, "&Home")
         self.bottomLeftTabWidget.addTab(tabImport, "&Import")
         self.bottomLeftTabWidget.addTab(tabBatches, "&Batches")
-
+        self.verify()
     def back(self):
         temp = os.getcwd() + '/Files'
         temp = temp.replace('\\', '/')
@@ -638,11 +648,13 @@ class MainMenu(QWidget):
                         weight_list.append(weight)
     def verify(self):
         self.filePath = self.filePath.replace('\\', '/')
+
+        self.previewText.setFont(QFont('Calibri', 16))
         self.previewText.setPlainText(f"""Preview:
 File Name: {self.fileName}
 File Path: {self.filePath}
 
-Selected Folder: {self.folderToImport.currentText() + '/' + self.metalThickness.currentText()}
+Destination: {self.folderToImport.currentText() + '/' + self.metalThickness.currentText()}
 
 Selected Metal Thickness: {self.metalThickness.currentText()}
 Selected Metal Type: {self.metalType.currentText()}
@@ -666,6 +678,7 @@ Price: {self.price}
         filePath, _ = QFileDialog.getOpenFileNames(self,"Your PDF", "","Portable Document File(*.pdf)")
         if filePath:
             for i, j in enumerate(filePath):
+                self.pathList.setFont(QFont('Calibri', 16))
                 self.pathList.insertItem(i, j)
                 self.filePath = j
                 self.verify()
@@ -704,7 +717,7 @@ Price: {self.price}
     def contextMenuEvent(self, event):
         self.menu = QMenu(self)
         createFolder = QAction('Create Folder', self)
-        btnAdd_directory = partial(self.btnAddFolder, '')
+        btnAdd_directory = partial(self.btnAddFolder, False)
         createFolder.triggered.connect(btnAdd_directory)
         self.menu.addAction(createFolder)
         # add other required actions
@@ -720,41 +733,33 @@ Price: {self.price}
             else:
                 buttonReply = QMessageBox.warning(self, 'Doesn\'t Exist', f"\"{text}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
                 return
-    def btnAddFolder(self, direc):
+    def btnAddFolder(self, create_file):
+        # print(direc)
+        print(last_hovered_file)
         text, okPressed = QInputDialog.getText(self, "Folder name","Name:", QLineEdit.Normal, "New Folder")
+        print(text)
         if okPressed and text != '':
-            if not os.path.exists(files_dir + text):
-                if direc == '':
-                    os.makedirs(files_dir + text)
+            if create_file == False:
+                if not os.path.exists(files_dir + text):
+                    os.makedirs(files_dir  + text)
                     self.mm = MainMenu()
                     self.mm.show()
                     self.close()
                 else:
-                    print(direc)
-                    os.makedirs(files_dir + direc + text)
+                    buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{text}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
+                    return
+            else:
+                if not os.path.exists(files_dir + last_hovered_file + '/' + text):
+                    os.makedirs(files_dir + last_hovered_file + '/' + text)
                     self.mm = MainMenu()
                     self.mm.show()
                     self.close()
-            else:
-                buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{text}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
-                return
-    
+                else:
+                    buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{last_hovered_file}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
+                    return
+
     def btnOpenContextMenu(self, point):
-        # show context menu
         self.btnOpenPopup.exec_(QCursor.pos())
-        # options = QFileDialog.Options()
-        # fileName, _ = QFileDialog.getOpenFileName(self,"Create Folder", "","All Files (*)", options=options)
-        # if fileName:
-        #     print(fileName)
-    # def closeEvent(self, event):
-    #     close = QMessageBox.question(self,
-    #                                  "QUIT",
-    #                                  "Are you sure want to exit the program?",
-    #                                  QMessageBox.Yes | QMessageBox.No)
-    #     if close == QMessageBox.Yes:
-    #         event.accept()
-    #     else:
-    #         event.ignore()
 class Folder_Screeen(QWidget):
     def __init__(self, directory_to_open, parent = None):
         super(Folder_Screeen, self).__init__(parent)
