@@ -40,7 +40,11 @@ weight_list = []
 # MISC VAR START ==============
 last_hovered_file = ''
 # MISC VAR EMD ==============
-
+# BATCH Var START ==============
+batch_list = []
+total_batches = 0
+unfinished_batches = 0
+# BATCH Var END ==============
 all_metal_thicknesses = ['8',
                          '9',
                          '10',
@@ -342,10 +346,13 @@ class MainMenu(QWidget):
         self.gridLayout.addWidget(self.txtSearch, 1, 0)
         self.gridLayout.addWidget(self.treeView, 3, 0)
         self.gridLayout1 = QGridLayout()
-
+        self.progressbar = QProgressBar(self)
         layout = QHBoxLayout(self)
         layout.addLayout(self.gridLayout)
         layout.addLayout(self.gridLayout1)
+        self.scroll = QScrollArea(self)
+        self.gridLayout1.addWidget(self.scroll)
+        self.gridLayout1.addWidget(self.progressbar)
         tabBatches.setLayout(layout)
         self.bottomLeftTabWidget.addTab(tabHome, "&Home")
         self.bottomLeftTabWidget.addTab(tabImport, "&Import")
@@ -367,6 +374,32 @@ class MainMenu(QWidget):
             self.filePath = a
             self.setWindowTitle(self.filePath)
             self.adjust_root_index()
+    def update_batches(self):
+        self.scroll.move(7, 80)
+        self.scroll.setWidgetResizable(True)
+        self.content = QWidget()
+        self.scroll.setWidget(self.content)
+        lay = QGridLayout(self.content)
+        for i, j in enumerate(batch_list):
+            self.check_box = QCheckBox(self)
+            self.check_box.stateChanged.connect(self.clickBox)
+            self.btnName = QPushButton(j, self)
+            self.btnName.setFlat(True)
+            # self.check_box.move(200, i + 30)
+            lay.addWidget(self.check_box, i, 1)
+            lay.addWidget(self.btnName, i, 2)
+
+            total_batches = i
+        self.progressbar.setMaximum(total_batches + 1)
+    def clickBox(self, state):
+        global unfinished_batches
+        if state == Qt.Checked:
+            unfinished_batches += 1
+            self.progressbar.setValue(unfinished_batches)
+        else:
+            unfinished_batches -= 1
+            self.progressbar.setValue(unfinished_batches)
+
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
@@ -404,15 +437,17 @@ class MainMenu(QWidget):
 
 
     def treeMedia_doubleClicked(self,index):
+        global batch_list
         source_index = self.proxy_model.mapToSource(index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
         self.setWindowTitle(self.filePath)
-
+        batch_list.append(self.fileName)
         if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
             self.path = self.filePath
             self.adjust_root_index()
+        self.update_batches()
     def openImage(self):
         self.vi = view_image(self.pdf_location)
         self.vi.show()
@@ -1173,23 +1208,6 @@ if __name__ == '__main__':
         with open(settings_dir + 'saved_data.json') as file:
             saved_data = json.load(file)
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
-
-    palette = QPalette()
-    palette.setColor(QPalette.Window, QColor(35, 35, 35))
-    palette.setColor(QPalette.WindowText, Qt.white)
-    palette.setColor(QPalette.Base, QColor(25, 25, 25))
-    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ToolTipBase, Qt.white)
-    palette.setColor(QPalette.ToolTipText, Qt.white)
-    palette.setColor(QPalette.Text, Qt.white)
-    palette.setColor(QPalette.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ButtonText, Qt.white)
-    palette.setColor(QPalette.BrightText, Qt.red)
-    palette.setColor(QPalette.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-    palette.setColor(QPalette.HighlightedText, Qt.black)
-    app.setPalette(palette)
 
     main = MainMenu()
     main.setWindowTitle(title + ' ' + version)
