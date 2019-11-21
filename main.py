@@ -289,7 +289,10 @@ class MainMenu(QWidget):
         tabHome.setLayout(tabHomehbox)
         tabBatches = QWidget()
 
-        self.path = files_dir
+        f = files_dir.split('/')
+        f[0] = f[0].capitalize()
+        f = '/'.join(f)
+        self.path = f
 
         self.pathRoot = QDir.rootPath()
 
@@ -650,21 +653,7 @@ class MainMenu(QWidget):
         self.filePath = self.filePath.replace('\\', '/')
 
         self.previewText.setFont(QFont('Calibri', 16))
-        self.previewText.setPlainText(f"""Preview:
-File Name: {self.fileName}
-File Path: {self.filePath}
-
-Destination: {self.folderToImport.currentText() + '/' + self.metalThickness.currentText()}
-
-Selected Metal Thickness: {self.metalThickness.currentText()}
-Selected Metal Type: {self.metalType.currentText()}
-
-Cut Time: {self.txtCutTime.text()}
-Bend Time: {self.txtBendTime.text()}
-Weight: {self.txtWeight.text()}
-
-Price: {self.price}
-""")
+        self.previewText.setPlainText(f"""File Name: {self.fileName}\nFile Path: {self.filePath}\n\nDestination: {self.folderToImport.currentText() + '/' + self.metalThickness.currentText()}\n\nSelected Metal Thickness: {self.metalThickness.currentText()}\nSelected Metal Type: {self.metalType.currentText()}\n\nCut Time: {self.txtCutTime.text()}\nBend Time: {self.txtBendTime.text()}\nWeight: {self.txtWeight.text()}\n\nPrice: {self.price}""")
         if self.txtBendTime.text() == '' or self.txtCutTime.text() == '' or self.txtWeight.text() == '' or self.fileName == '' or self.filePath == '':
             self.btnImport.setEnabled(False)
             self.btnImportAll.setEnabled(False)
@@ -924,21 +913,14 @@ class Folder_Screeen(QWidget):
                         j = '/'.join(j)
                         if self.filePath == j:
                             self.price = ''
-                            self.pdfText.setPlainText(f"""Preview:
-File Name: {j}
-File Path: {paths_list[i]}
-
-Folder: {folder_list[i]}
-
-Selected Metal Thickness: {metal_thickness_list[i]}
-Selected Metal Type: {metal_type_list[i]}
-
-Cut Time: {cut_time_list[i]}
-Bend Time: {bend_time_list[i]}
-Weight: {weight_list[i]}
-
-Price: {self.price}
-""")
+                            n = folder_list[i].split('/')
+                            n[0] = n[0].capitalize()
+                            n = '/'.join(n)
+                            j = j.replace(n + '/', '')
+                            m = paths_list[i].split('/')
+                            m[0] = m[0].capitalize()
+                            m = '/'.join(m)
+                            self.pdfText.setPlainText(f"""File Name: {j}\nFile Path: {m}\n\nDestination: {n}\n\nSelected Metal Thickness: {metal_thickness_list[i]}\nSelected Metal Type: {metal_type_list[i]}\n\nCut Time: {cut_time_list[i]}\nBend Time: {bend_time_list[i]}\nWeight: {weight_list[i]}\n\nPrice: {self.price}""")
                     if not os.path.exists(output):
                         pdffile = self.filePath
                         doc = fitz.open(pdffile)
