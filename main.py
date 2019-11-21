@@ -108,7 +108,7 @@ class MainMenu(QWidget):
         self.fileName = ''
         self.price = ''
         self.pdf_location = ''
-
+        self.mt = ''
 
         self.createTabs()
 
@@ -346,13 +346,24 @@ class MainMenu(QWidget):
         self.gridLayout.addWidget(self.txtSearch, 1, 0)
         self.gridLayout.addWidget(self.treeView, 3, 0)
         self.gridLayout1 = QGridLayout()
+        # self.gridLayout1.setColumnStretch(1, 4)
         self.progressbar = QProgressBar(self)
+        self.lblProgress = QLabel('0/0', self)
         layout = QHBoxLayout(self)
         layout.addLayout(self.gridLayout)
         layout.addLayout(self.gridLayout1)
         self.scroll = QScrollArea(self)
-        self.gridLayout1.addWidget(self.scroll)
-        self.gridLayout1.addWidget(self.progressbar)
+        self.gridLayout1.addWidget(self.scroll, 0, 0)
+        self.gridLayout1.addWidget(self.lblProgress, 1, 0)
+        self.gridLayout1.addWidget(self.progressbar, 2, 0)
+        
+        self.scroll.move(7, 80)
+        self.scroll.setWidgetResizable(True)
+        self.content = QWidget()
+        self.scroll.setWidget(self.content)
+        self.lay = QGridLayout(self.content)
+        # self.grid_batch_names_grid = QGridLayout(self)
+        # self.lay.addWidget(self.grid_batch_names_grid, 0, 1)
         tabBatches.setLayout(layout)
         self.bottomLeftTabWidget.addTab(tabHome, "&Home")
         self.bottomLeftTabWidget.addTab(tabImport, "&Import")
@@ -375,57 +386,69 @@ class MainMenu(QWidget):
             self.setWindowTitle(self.filePath)
             self.adjust_root_index()
     def update_batches(self):
-        self.scroll.move(7, 80)
-        self.scroll.setWidgetResizable(True)
-        self.content = QWidget()
-        self.scroll.setWidget(self.content)
-        lay = QGridLayout(self.content)
-        for i, j in enumerate(batch_list):
-            self.check_box = QCheckBox(self)
-            self.check_box.stateChanged.connect(self.clickBox)
-            self.btnName = QPushButton(j, self)
-            self.btnName.setFlat(True)
-            # self.check_box.move(200, i + 30)
-            lay.addWidget(self.check_box, i, 1)
-            lay.addWidget(self.btnName, i, 2)
+        global total_batches, unfinished_batches
+        total_batches += 1
+        batch_list.sort()
+        # for i, j in enumerate(batch_list):
+        #     print(str(i) + ' = ' + str(total_batches))
+            # if i < total_batches:
+        self.btnName = QPushButton(self)
+        button_name = self.fileName
+        button_name = button_name.replace('.pdf', '')
+        button_name = button_name.replace('.dxf', '')
+        self.btnName.setText(button_name + ' - ' + self.mt)
+        self.btnName.setFlat(True)
+        self.lay.addWidget(self.btnName, total_batches, 1)
+            # else:
+            #     continue
+        self.check_box = QCheckBox(self)
+        self.check_box.stateChanged.connect(self.clickBox)
+        self.lay.addWidget(self.check_box, total_batches, 0)
 
-            total_batches = i
-        self.progressbar.setMaximum(total_batches + 1)
+        self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
+        self.progressbar.setMaximum(total_batches)
     def clickBox(self, state):
-        global unfinished_batches
+        global unfinished_batches, total_batches
         if state == Qt.Checked:
             unfinished_batches += 1
-            self.progressbar.setValue(unfinished_batches)
         else:
             unfinished_batches -= 1
-            self.progressbar.setValue(unfinished_batches)
+        self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
+        self.progressbar.setValue(unfinished_batches)
+        try:
+            perc = int(unfinished_batches / total_batches * 100)
+            self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
+        except Exception as DivisionByZero:
+            self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
 
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
         self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
         self.adjust_root_index()
-
     def adjust_root_index(self):
         root_index = self.model.index(self.path)
         proxy_index = self.proxy_model.mapFromSource(root_index)
         self.treeView.setRootIndex(proxy_index)
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
             if self.lineEditFilePath.text() != '':
                 os.remove(self.lineEditFilePath.text())
-
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def on_treeView_clicked(self, index):
-        global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
+        global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list, unfinished_batches, total_batches
 
         source_index = self.proxy_model.mapToSource(index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
         # self.pdf_location = ''
-        self.setWindowTitle(self.filePath)
+        try:
+            perc = int(unfinished_batches / total_batches * 100)
+            self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
+        except Exception as DivisionByZero:
+            self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
+            
         if self.fileName.endswith('.dxf') or self.fileName.endswith('.DXF'):
             new_name = (os.path.splitext(self.fileName)[0])
             output = cache_dir + new_name + ' - dxf.png'
@@ -434,20 +457,31 @@ class MainMenu(QWidget):
             new_name = (os.path.splitext(self.fileName)[0])
             output = cache_dir + new_name + ' - pdf.png'
             self.pdf_location = output
-
-
+        
+        for i, j in enumerate(paths_list):
+            j = j.replace('\\', '/')
+            j = j.split('/')
+            j[0] = j[0].capitalize()
+            j = '/'.join(j)
+            if self.filePath == j:
+                self.mt = metal_thickness_list[i]
     def treeMedia_doubleClicked(self,index):
-        global batch_list
+        global batch_list, metal_thickness_list, unfinished_batches, total_batches
         source_index = self.proxy_model.mapToSource(index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
-        self.setWindowTitle(self.filePath)
-        batch_list.append(self.fileName)
+        try:
+            perc = int(unfinished_batches / total_batches * 100)
+            self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
+        except Exception as DivisionByZero:
+            self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
         if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
             self.path = self.filePath
             self.adjust_root_index()
-        self.update_batches()
+        elif self.fileName.lower().endswith(('.pdf', '.dxf')):
+            batch_list.append(self.fileName)
+            self.update_batches()
     def openImage(self):
         self.vi = view_image(self.pdf_location)
         self.vi.show()
@@ -459,7 +493,6 @@ class MainMenu(QWidget):
                     event.accept()
                     return
         event.ignore()
-
     def dropEvent(self, event):
         if event.source():
             QTreeView.dropEvent(self, event)
@@ -489,7 +522,6 @@ class MainMenu(QWidget):
                     accepted = True
                 if accepted:
                     event.acceptProposedAction()
-
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls:
             event.setDropAction(Qt.CopyAction)
@@ -781,7 +813,6 @@ class MainMenu(QWidget):
                 else:
                     buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{last_hovered_file}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
                     return
-
     def btnOpenContextMenu(self, point):
         self.btnOpenPopup.exec_(QCursor.pos())
 class Folder_Screeen(QWidget):
