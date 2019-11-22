@@ -397,7 +397,7 @@ class MainMenu(QWidget):
             button_name = j
             # button_name = button_name.replace('.pdf', '')
             # button_name = button_name.replace('.dxf', '')
-            self.btnName.setText(button_name + ' - ' + batch_thickness[i])
+            self.btnName.setText(button_name + ' - ' + batch_thickness[i] + ' Gauge')
             self.btnName.setFlat(True)
             self.lay.addWidget(self.btnName, i, 1)
             self.check_box = QCheckBox(self)
@@ -405,8 +405,8 @@ class MainMenu(QWidget):
                 self.check_box.setChecked(True)
             else:
                 self.check_box.setChecked(False)
-
-            checkbox_index = partial(self.clickBox, i, i)
+            # checkbox_index = partial(self.clickBox, index=i)
+            checkbox_index = lambda state, index=i: self.clickBox(state == Qt.Checked, index)
             self.check_box.stateChanged.connect(checkbox_index)
             self.lay.addWidget(self.check_box, i, 0)
             # else:
@@ -417,8 +417,9 @@ class MainMenu(QWidget):
         self.progressbar.setMaximum(total_batches)
     def clickBox(self, state, index):
         print(index)
+        print(state)
         global unfinished_batches, total_batches
-        if state == Qt.Checked:
+        if state:
             unfinished_batches += 1
         else:
             unfinished_batches -= 1
@@ -499,13 +500,21 @@ class MainMenu(QWidget):
                 saved_batches_data.append({
                 'checked': ['False'],
                 'name': [self.fileName],
-                'thickness': [self.mt],
+                'thickness': [self.mt.replace('Gauge', '')],
                 })
                 file_copy_location = folder + '/'
                 if not os.path.exists(file_copy_location):
                     os.makedirs(file_copy_location)
                 # sort json file
-                sorted_saved_batches_data = sorted(saved_batches_data, key=lambda x : x['thickness'], reverse=False)
+                from operator import itemgetter
+                import operator
+                # sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness')) 
+                # saved_batches_data.sort(key=operator.itemgetter('thickness'))
+                sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
+                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k['thickness'])
+                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k['thickness']) 
+                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k.get('thickness', 0), reverse=True)
+                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda x : x['thickness'], reverse=False)
                 # Write to passwords file
                 with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
                     json.dump(sorted_saved_batches_data, file, ensure_ascii=True, indent=4, sort_keys=True)
