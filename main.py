@@ -37,6 +37,7 @@ weight_list = []
 
 saved_batches_data = []
 batch_name = []
+batch_path = []
 batch_checked = []
 batch_thickness = []
 # price_list = []
@@ -390,7 +391,7 @@ class MainMenu(QWidget):
             self.setWindowTitle(self.filePath)
             self.adjust_root_index()
     def update_batches(self):
-        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_checked
+        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_checked, batch_path
         batch_list.sort()
         for i, j in enumerate(batch_name):
             self.btnName = QPushButton(self)
@@ -405,9 +406,10 @@ class MainMenu(QWidget):
                 self.check_box.setChecked(True)
             else:
                 self.check_box.setChecked(False)
-            # checkbox_index = partial(self.clickBox, index=i)
-            checkbox_index = lambda state, index=i: self.clickBox(state == Qt.Checked, index)
-            self.check_box.stateChanged.connect(checkbox_index)
+            # checkbox_index = partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i])
+            # checkbox_index = lambda state, index=i: self.clickBox(state == Qt.Checked, index)
+            # self.check_box.stateChanged.connect(checkbox_index)
+            self.check_box.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i]))
             self.lay.addWidget(self.check_box, i, 0)
             # else:
             #     continue
@@ -415,14 +417,62 @@ class MainMenu(QWidget):
 
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setMaximum(total_batches)
-    def clickBox(self, state, index):
-        print(index)
-        print(state)
-        global unfinished_batches, total_batches
+    def clickBox(self, i, j, k, p, state):
+        self.index = i
+        self.batch_name = j
+        self.batch_path = p
+        self.thickness = k
+        # print(f'clickBox:  i={i}, j={j}, state={state}, thickness={k};')
+        global unfinished_batches, total_batches, saved_batches_data
         if state:
+            for i, j in enumerate(saved_batches_data):
+                if self.index == i:
+                    print(j['path'])
+                    if j['path'] == self.batch_path:
+                        print(j)
+                        print(i)
+                        saved_batches_data.pop(i)
+                        saved_batches_data.append({
+                        'checked': ['True'],
+                        'path': [self.batch_path],
+                        'name': [self.batch_name],
+                        'thickness': [self.thickness.replace(' Gauge', '')],
+                        })
             unfinished_batches += 1
         else:
+            for i, j in enumerate(saved_batches_data):
+                if self.index == i:
+                    if j['path'] == self.batch_path:
+                        print(j)
+                        print(i)
+                        saved_batches_data.pop(i)
+                        saved_batches_data.append({
+                        'checked': ['False'],
+                        'path': [self.batch_path],
+                        'name': [self.batch_name],
+                        'thickness': [self.thickness.replace(' Gauge', '')],
+                        })
             unfinished_batches -= 1
+        from operator import itemgetter
+        import operator
+        sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
+        with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
+            json.dump(sorted_saved_batches_data, file, ensure_ascii=True, indent=4, sort_keys=True)
+        with open(settings_dir + 'saved_batches.json') as file:
+            saved_batches_data = json.load(file)
+            batch_name.clear()
+            batch_path.clear()
+            batch_checked.clear()
+            batch_thickness.clear()
+            for info in saved_batches_data:
+                for name in info['name']:
+                    batch_name.append(name)
+                for checked in info['checked']:
+                    batch_checked.append(checked)
+                for thickness in info['thickness']:
+                    batch_thickness.append(thickness)
+                for path in info['path']:
+                    batch_path.append(path)
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setValue(unfinished_batches)
 
@@ -479,7 +529,7 @@ class MainMenu(QWidget):
             if self.filePath == j:
                 self.mt = metal_thickness_list[i]
     def treeMedia_doubleClicked(self,index):
-        global batch_list, metal_thickness_list, unfinished_batches, total_batches, saved_batches_data, batch_name, batch_thickness, batch_checked
+        global batch_list, metal_thickness_list, unfinished_batches, total_batches, saved_batches_data, batch_name, batch_thickness, batch_checked, batch_path
         source_index = self.proxy_model.mapToSource(index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
@@ -494,13 +544,13 @@ class MainMenu(QWidget):
             self.path = self.filePath
             self.adjust_root_index()
         elif self.fileName.lower().endswith(('.pdf', '.dxf')):
-
             if os.path.exists(settings_dir + 'saved_batches.json'):
                 # batch_list.append(self.fileName)
                 saved_batches_data.append({
                 'checked': ['False'],
+                'path': [self.filePath],
                 'name': [self.fileName],
-                'thickness': [self.mt.replace('Gauge', '')],
+                'thickness': [self.mt.replace(' Gauge', '')],
                 })
                 file_copy_location = folder + '/'
                 if not os.path.exists(file_copy_location):
@@ -508,11 +558,11 @@ class MainMenu(QWidget):
                 # sort json file
                 from operator import itemgetter
                 import operator
-                # sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness')) 
+                # sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'))
                 # saved_batches_data.sort(key=operator.itemgetter('thickness'))
                 sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
                 # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k['thickness'])
-                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k['thickness']) 
+                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k['thickness'])
                 # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k.get('thickness', 0), reverse=True)
                 # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda x : x['thickness'], reverse=False)
                 # Write to passwords file
@@ -521,6 +571,7 @@ class MainMenu(QWidget):
                 with open(settings_dir + 'saved_batches.json') as file:
                     saved_batches_data = json.load(file)
                     batch_name.clear()
+                    batch_path.clear()
                     batch_checked.clear()
                     batch_thickness.clear()
                     for info in saved_batches_data:
@@ -530,6 +581,8 @@ class MainMenu(QWidget):
                             batch_checked.append(checked)
                         for thickness in info['thickness']:
                             batch_thickness.append(thickness)
+                        for path in info['path']:
+                            batch_path.append(path)
             elif not os.path.exists(settings_dir + 'saved_batches.json'):
                 file = open(settings_dir + "saved_batches.json", "w+")
                 file.write("[]")
@@ -1302,6 +1355,8 @@ if __name__ == '__main__':
             for info in saved_batches_data:
                 for name in info['name']:
                     batch_name.append(name)
+                for path in info['path']:
+                    batch_path.append(path)
                 for checked in info['checked']:
                     batch_checked.append(checked)
                 for thickness in info['thickness']:
