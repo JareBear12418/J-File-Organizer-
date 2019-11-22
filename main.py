@@ -135,6 +135,7 @@ class MainMenu(QWidget):
 
         mainLayout = QGridLayout()
         self.update_batches()
+        self.showMaximized()
     def createTabs(self):
         self.bottomLeftTabWidget = QTabWidget()
         self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Ignored)
@@ -268,33 +269,22 @@ class MainMenu(QWidget):
             self.btnOpen = HoverButton(p,self)
             self.btnOpen.setStyleSheet('text-align: bottom')
             self.btnOpen.setFlat(True)
-            # self.btnOpen.setAlignment(Qt.AlignCenter | Qt.AlignBottom)
-            # set button context menu policy
             self.btnOpen.setContextMenuPolicy(Qt.CustomContextMenu)
             self.btnOpen.customContextMenuRequested.connect(self.btnOpenContextMenu)
-
-            # create context menu
             self.btnOpenPopup = QMenu(self)
             createFolder = QAction('Add folder', self)
             btnAdd_directory = partial(self.btnAddFolder, True)
             createFolder.triggered.connect(btnAdd_directory)
             self.btnOpenPopup.addAction(createFolder)
-            # self.btnOpenPopup.addAction(QAction('Add folder', self))
-            # self.btnOpenPopup.addAction(QAction('Delete', self))
-            # self.btnOpen.addAction(QAction('test1', self))
-            # self.btnOpen.addSeparator()
-            # self.btnOpen.addAction(QAction('test2', self))
             self.btnOpen.setIcon(QIcon('icons/folder.png'))
             self.btnOpen.setIconSize(QSize(64,64))
             self.btnOpen.resize(50, 50)
             self.btnOpen.clicked.connect(open_directory)
             self.gridLayoutButtons.addWidget(self.btnOpen, j, k)
             k += 1
-            if k > 2:
+            if k > 3:
                 k = 0
                 j += 1
-        # self.btnAddConnection = QPushButton('Add', self)
-        # self.btnAddConnection.clicked.connect(self.btnAddFolder)
 
         tabHomehbox = QVBoxLayout()
         tabHomehbox.addLayout(self.gridLayoutButtons)
@@ -379,6 +369,7 @@ class MainMenu(QWidget):
         self.bottomLeftTabWidget.addTab(tabHome, "&Home")
         self.bottomLeftTabWidget.addTab(tabImport, "&Import")
         self.bottomLeftTabWidget.addTab(tabBatches, "&Batches")
+        self.back()
         self.verify()
     def back(self):
         temp = os.getcwd() + '/Files'
@@ -901,26 +892,25 @@ class MainMenu(QWidget):
                 buttonReply = QMessageBox.warning(self, 'Doesn\'t Exist', f"\"{text}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
                 return
     def btnAddFolder(self, create_file):
-        # print(direc)
-        print(last_hovered_file)
         text, okPressed = QInputDialog.getText(self, "Folder name","Name:", QLineEdit.Normal, "New Folder")
-        print(text)
         if okPressed and text != '':
             if create_file == False:
                 if not os.path.exists(files_dir + text):
                     os.makedirs(files_dir  + text)
-                    self.mm = MainMenu()
-                    self.mm.show()
-                    self.close()
+                    # self.mm = MainMenu()
+                    # self.mm.show()
+                    # self.close()
+                    self.clearLayout(self.gridLayoutButtons)
                 else:
                     buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{text}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
                     return
             else:
                 if not os.path.exists(files_dir + last_hovered_file + '/' + text):
                     os.makedirs(files_dir + last_hovered_file + '/' + text)
-                    self.mm = MainMenu()
-                    self.mm.show()
-                    self.close()
+                    # self.mm = MainMenu()
+                    # self.mm.show()
+                    # self.close()
+                    self.clearLayout(self.gridLayoutButtons)
                 else:
                     buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{last_hovered_file}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
                     return
