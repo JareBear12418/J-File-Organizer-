@@ -164,6 +164,7 @@ class MainMenu(QWidget):
         self.pathList.itemSelectionChanged.connect(self.path_list_clicked)
 
         self.label = QLabel('Folder:', self)
+        self.label.setFont(QFont('Calibri', 14))
         self.gridLayoutImport.addWidget(self.label, 0, 0)
         self.folderToImport = QComboBox(self)
         self.folderToImport.setFont(QFont('Calibri', 14))
@@ -191,6 +192,7 @@ class MainMenu(QWidget):
 
 
         self.label = QLabel('Thickness:', self)
+        self.label.setFont(QFont('Calibri', 14))
         self.gridLayoutImport.addWidget(self.label, 1, 0)
         for i, j in enumerate(all_metal_thicknesses):
             self.metalThickness.addItem(j + ' Gauge')
@@ -198,6 +200,7 @@ class MainMenu(QWidget):
         self.gridLayoutImport.addWidget(self.metalThickness, 1, 1)
 
         self.label = QLabel('Type:', self)
+        self.label.setFont(QFont('Calibri', 14))
         self.gridLayoutImport.addWidget(self.label, 2, 0)
         for i, j in enumerate(all_metal_types):
             self.metalType.addItem(j)
@@ -205,16 +208,19 @@ class MainMenu(QWidget):
         self.gridLayoutImport.addWidget(self.metalType, 2, 1)
 
         self.label = QLabel('Cut Time:', self)
+        self.label.setFont(QFont('Calibri', 14))
         self.gridLayoutImport.addWidget(self.label, 3, 0)
         self.txtCutTime.textChanged.connect(self.verify)
         self.gridLayoutImport.addWidget(self.txtCutTime, 3, 1)
 
         self.label = QLabel('Bend Time:', self)
+        self.label.setFont(QFont('Calibri', 14))
         self.gridLayoutImport.addWidget(self.label, 4, 0)
         self.txtBendTime.textChanged.connect(self.verify)
         self.gridLayoutImport.addWidget(self.txtBendTime, 4, 1)
 
         self.label = QLabel('Weight:', self)
+        self.label.setFont(QFont('Calibri', 14))
         self.gridLayoutImport.addWidget(self.label, 5, 0)
         self.txtWeight.textChanged.connect(self.verify)
         self.gridLayoutImport.addWidget(self.txtWeight, 5, 1)
@@ -392,30 +398,28 @@ class MainMenu(QWidget):
             self.adjust_root_index()
     def update_batches(self):
         global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_checked, batch_path
-        batch_list.sort()
+        # batch_list.sort()
+        total_batches = 0
+        unfinished_batches = 0
         for i, j in enumerate(batch_name):
             self.btnName = QPushButton(self)
             button_name = j
-            # button_name = button_name.replace('.pdf', '')
-            # button_name = button_name.replace('.dxf', '')
             self.btnName.setText(button_name + ' - ' + batch_thickness[i] + ' Gauge')
             self.btnName.setFlat(True)
             self.lay.addWidget(self.btnName, i, 1)
             self.check_box = QCheckBox(self)
-            if batch_checked[i] == ['True']:
+            
+            if batch_checked[i] == 'True':
+                unfinished_batches += 1
                 self.check_box.setChecked(True)
             else:
                 self.check_box.setChecked(False)
-            # checkbox_index = partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i])
-            # checkbox_index = lambda state, index=i: self.clickBox(state == Qt.Checked, index)
-            # self.check_box.stateChanged.connect(checkbox_index)
             self.check_box.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i]))
             self.lay.addWidget(self.check_box, i, 0)
-            # else:
-            #     continue
             total_batches += 1
-
+        
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
+        self.progressbar.setValue(unfinished_batches)
         self.progressbar.setMaximum(total_batches)
     def clickBox(self, i, j, k, p, state):
         self.index = i
@@ -427,10 +431,7 @@ class MainMenu(QWidget):
         if state:
             for i, j in enumerate(saved_batches_data):
                 if self.index == i:
-                    print(j['path'])
-                    if j['path'] == self.batch_path:
-                        print(j)
-                        print(i)
+                    if j['path'][0] == self.batch_path:
                         saved_batches_data.pop(i)
                         saved_batches_data.append({
                         'checked': ['True'],
@@ -442,9 +443,7 @@ class MainMenu(QWidget):
         else:
             for i, j in enumerate(saved_batches_data):
                 if self.index == i:
-                    if j['path'] == self.batch_path:
-                        print(j)
-                        print(i)
+                    if j['path'][0] == self.batch_path:
                         saved_batches_data.pop(i)
                         saved_batches_data.append({
                         'checked': ['False'],
@@ -482,7 +481,6 @@ class MainMenu(QWidget):
                 self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
             except Exception as DivisionByZero:
                 self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
-
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
@@ -558,14 +556,7 @@ class MainMenu(QWidget):
                 # sort json file
                 from operator import itemgetter
                 import operator
-                # sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'))
-                # saved_batches_data.sort(key=operator.itemgetter('thickness'))
                 sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
-                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k['thickness'])
-                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k['thickness'])
-                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda k: k.get('thickness', 0), reverse=True)
-                # sorted_saved_batches_data = sorted(saved_batches_data, key=lambda x : x['thickness'], reverse=False)
-                # Write to passwords file
                 with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
                     json.dump(sorted_saved_batches_data, file, ensure_ascii=True, indent=4, sort_keys=True)
                 with open(settings_dir + 'saved_batches.json') as file:
@@ -589,6 +580,7 @@ class MainMenu(QWidget):
                 file.close()
                 with open(settings_dir + 'saved_batches.json') as file:
                     saved_batches_data = json.load(file)
+            self.clearLayout(self.lay)
             self.update_batches()
     def openImage(self):
         self.vi = view_image(self.pdf_location)
@@ -652,6 +644,15 @@ class MainMenu(QWidget):
                     if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
                         self.treeView.edit(ix)
     # TREE VIEW END ====================================
+    def clearLayout(self, layout):
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+                else:
+                    self.clearLayout(item.layout())
     def import_pdf(self):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
         with open(settings_dir + 'saved_data.json') as file:
@@ -873,6 +874,8 @@ class MainMenu(QWidget):
                 self.thumbnail.setIconSize(QSize(512,512))
             self.verify()
         except:
+            print('No more elements')
+        finally:
             print('No more elements')
     def open_tree_directory(self, directory):
         self.fs = Folder_Screeen(directory)
@@ -1207,7 +1210,6 @@ class Folder_Screeen(QWidget):
         self.mm.setWindowTitle(title + ' ' + version)
         self.mm.show()
         self.close()
-# class view_iamge(QWidget):
 class PhotoViewer(QtWidgets.QGraphicsView):
     photoClicked = pyqtSignal(QPoint)
     def __init__(self, parent):
@@ -1279,7 +1281,6 @@ class PhotoViewer(QtWidgets.QGraphicsView):
         if self._photo.isUnderMouse():
             self.photoClicked.emit(self.mapToScene(event.pos()).toPoint())
         super(PhotoViewer, self).mousePressEvent(event)
-
 class view_image(QtWidgets.QWidget):
     def __init__(self, directory_to_open):
         super(view_image, self).__init__()
