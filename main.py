@@ -11,7 +11,6 @@ from pathlib import Path
 from requests import Session
 from threading import Thread
 from functools import partial
-from functools import partial
 from os.path import expanduser
 # pip install PyGTK / pip install giofile / pip install PyPDF2 / pip install PyMuPDF / pip install ezdxf
 import sys, os, getpass, subprocess, glob, shutil, PyPDF2, re, json, fitz
@@ -26,7 +25,7 @@ settings_dir = os.path.dirname(os.path.realpath(__file__)) + '/settings/'
 files_dir = os.path.dirname(os.path.realpath(__file__)) + '/Files/'
 cache_dir = os.path.dirname(os.path.realpath(__file__)) + '/Cache/'
 # JSON DATA START ================
-saved_data = ''
+saved_data = []
 paths_list = []
 names_list = []
 folder_list = []
@@ -35,6 +34,11 @@ metal_type_list = []
 cut_time_list = []
 bend_time_list = []
 weight_list = []
+
+saved_batches_data = []
+batch_name = []
+batch_checked = []
+batch_thickness = []
 # price_list = []
 # JSON DATA END ================
 # MISC VAR START ==============
@@ -129,7 +133,7 @@ class MainMenu(QWidget):
 
 
         mainLayout = QGridLayout()
-
+        self.update_batches()
     def createTabs(self):
         self.bottomLeftTabWidget = QTabWidget()
         self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Ignored)
@@ -356,7 +360,7 @@ class MainMenu(QWidget):
         self.gridLayout1.addWidget(self.scroll, 0, 0)
         self.gridLayout1.addWidget(self.lblProgress, 1, 0)
         self.gridLayout1.addWidget(self.progressbar, 2, 0)
-        
+
         self.scroll.move(7, 80)
         self.scroll.setWidgetResizable(True)
         self.content = QWidget()
@@ -386,28 +390,33 @@ class MainMenu(QWidget):
             self.setWindowTitle(self.filePath)
             self.adjust_root_index()
     def update_batches(self):
-        global total_batches, unfinished_batches
-        total_batches += 1
+        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_checked
         batch_list.sort()
-        # for i, j in enumerate(batch_list):
-        #     print(str(i) + ' = ' + str(total_batches))
-            # if i < total_batches:
-        self.btnName = QPushButton(self)
-        button_name = self.fileName
-        button_name = button_name.replace('.pdf', '')
-        button_name = button_name.replace('.dxf', '')
-        self.btnName.setText(button_name + ' - ' + self.mt)
-        self.btnName.setFlat(True)
-        self.lay.addWidget(self.btnName, total_batches, 1)
+        for i, j in enumerate(batch_name):
+            self.btnName = QPushButton(self)
+            button_name = j
+            # button_name = button_name.replace('.pdf', '')
+            # button_name = button_name.replace('.dxf', '')
+            self.btnName.setText(button_name + ' - ' + batch_thickness[i])
+            self.btnName.setFlat(True)
+            self.lay.addWidget(self.btnName, i, 1)
+            self.check_box = QCheckBox(self)
+            if batch_checked[i] == ['True']:
+                self.check_box.setChecked(True)
+            else:
+                self.check_box.setChecked(False)
+
+            checkbox_index = partial(self.clickBox, i, i)
+            self.check_box.stateChanged.connect(checkbox_index)
+            self.lay.addWidget(self.check_box, i, 0)
             # else:
             #     continue
-        self.check_box = QCheckBox(self)
-        self.check_box.stateChanged.connect(self.clickBox)
-        self.lay.addWidget(self.check_box, total_batches, 0)
+            total_batches += 1
 
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setMaximum(total_batches)
-    def clickBox(self, state):
+    def clickBox(self, state, index):
+        print(index)
         global unfinished_batches, total_batches
         if state == Qt.Checked:
             unfinished_batches += 1
@@ -415,11 +424,13 @@ class MainMenu(QWidget):
             unfinished_batches -= 1
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setValue(unfinished_batches)
-        try:
-            perc = int(unfinished_batches / total_batches * 100)
-            self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
-        except Exception as DivisionByZero:
-            self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
+
+        if not total_batches == 0 :
+            try:
+                perc = int(unfinished_batches / total_batches * 100)
+                self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
+            except Exception as DivisionByZero:
+                self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
 
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
@@ -443,12 +454,13 @@ class MainMenu(QWidget):
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
         # self.pdf_location = ''
-        try:
-            perc = int(unfinished_batches / total_batches * 100)
-            self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
-        except Exception as DivisionByZero:
-            self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
-            
+        if not total_batches == 0 :
+            try:
+                perc = int(unfinished_batches / total_batches * 100)
+                self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
+            except Exception as DivisionByZero:
+                self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
+
         if self.fileName.endswith('.dxf') or self.fileName.endswith('.DXF'):
             new_name = (os.path.splitext(self.fileName)[0])
             output = cache_dir + new_name + ' - dxf.png'
@@ -457,7 +469,7 @@ class MainMenu(QWidget):
             new_name = (os.path.splitext(self.fileName)[0])
             output = cache_dir + new_name + ' - pdf.png'
             self.pdf_location = output
-        
+
         for i, j in enumerate(paths_list):
             j = j.replace('\\', '/')
             j = j.split('/')
@@ -466,21 +478,55 @@ class MainMenu(QWidget):
             if self.filePath == j:
                 self.mt = metal_thickness_list[i]
     def treeMedia_doubleClicked(self,index):
-        global batch_list, metal_thickness_list, unfinished_batches, total_batches
+        global batch_list, metal_thickness_list, unfinished_batches, total_batches, saved_batches_data, batch_name, batch_thickness, batch_checked
         source_index = self.proxy_model.mapToSource(index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
         self.filePath = self.model.filePath(indexItem)
-        try:
-            perc = int(unfinished_batches / total_batches * 100)
-            self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
-        except Exception as DivisionByZero:
-            self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
+        if not total_batches == 0 :
+            try:
+                perc = int(unfinished_batches / total_batches * 100)
+                self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
+            except Exception as DivisionByZero:
+                self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
         if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
             self.path = self.filePath
             self.adjust_root_index()
         elif self.fileName.lower().endswith(('.pdf', '.dxf')):
-            batch_list.append(self.fileName)
+
+            if os.path.exists(settings_dir + 'saved_batches.json'):
+                # batch_list.append(self.fileName)
+                saved_batches_data.append({
+                'checked': ['False'],
+                'name': [self.fileName],
+                'thickness': [self.mt],
+                })
+                file_copy_location = folder + '/'
+                if not os.path.exists(file_copy_location):
+                    os.makedirs(file_copy_location)
+                # sort json file
+                sorted_saved_batches_data = sorted(saved_batches_data, key=lambda x : x['thickness'], reverse=False)
+                # Write to passwords file
+                with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
+                    json.dump(sorted_saved_batches_data, file, ensure_ascii=True, indent=4, sort_keys=True)
+                with open(settings_dir + 'saved_batches.json') as file:
+                    saved_batches_data = json.load(file)
+                    batch_name.clear()
+                    batch_checked.clear()
+                    batch_thickness.clear()
+                    for info in saved_batches_data:
+                        for name in info['name']:
+                            batch_name.append(name)
+                        for checked in info['checked']:
+                            batch_checked.append(checked)
+                        for thickness in info['thickness']:
+                            batch_thickness.append(thickness)
+            elif not os.path.exists(settings_dir + 'saved_batches.json'):
+                file = open(settings_dir + "saved_batches.json", "w+")
+                file.write("[]")
+                file.close()
+                with open(settings_dir + 'saved_batches.json') as file:
+                    saved_batches_data = json.load(file)
             self.update_batches()
     def openImage(self):
         self.vi = view_image(self.pdf_location)
@@ -556,7 +602,7 @@ class MainMenu(QWidget):
             bend_time_list.clear()
             metal_type_list.clear()
             metal_thickness_list.clear()
-            for info in passwords_json:
+            for info in saved_data:
                 for path in info['path']:
                     paths_list.append(path)
                 for name in info['name']:
@@ -582,7 +628,7 @@ class MainMenu(QWidget):
                     buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists in\n{folder}", QMessageBox.Ok, QMessageBox.Ok)
                     self.pathList.setCurrentRow(self.pathList.currentRow() + 1)
                     return
-        passwords_json.append({
+        saved_data.append({
             'path': [folder + '/' + self.fileName],
             'name': [self.fileName],
             'folder': [folder], #TODO this
@@ -598,14 +644,14 @@ class MainMenu(QWidget):
             os.makedirs(file_copy_location)
         shutil.copyfile(self.filePath, file_copy_location + self.fileName)
         # sort json file
-        sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
+        sorted_obj = sorted(saved_data, key=lambda x : x['name'], reverse=False)
         # Write to passwords file
         with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
             json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
 
         with open(settings_dir + 'saved_data.json') as file:
             saved_data = json.load(file)
-            for info in passwords_json:
+            for info in saved_data:
                 for path in info['path']:
                     paths_list.append(path)
                 for name in info['name']:
@@ -636,7 +682,7 @@ class MainMenu(QWidget):
             bend_time_list.clear()
             metal_type_list.clear()
             metal_thickness_list.clear()
-            for info in passwords_json:
+            for info in saved_data:
                 for path in info['path']:
                     paths_list.append(path)
                 for name in info['name']:
@@ -667,7 +713,7 @@ class MainMenu(QWidget):
                         buttonReply = QMessageBox.information(self, 'Already Exists', f"{self.fileName} already exists in\n{folder}", QMessageBox.Ok, QMessageBox.Ok)
                         self.pathList.setCurrentRow(self.pathList.currentRow() + 1)
                         return
-            passwords_json.append({
+            saved_data.append({
                 'path': [folder + '/' + self.fileName],
                 'name': [self.fileName],
                 'folder': [folder], #TODO this
@@ -684,7 +730,7 @@ class MainMenu(QWidget):
             shutil.copyfile(self.filePath, file_copy_location + self.fileName)
             self.pathList.setCurrentRow(readedFileList.index(self.filePath))
             # sort json file
-            sorted_obj = sorted(passwords_json, key=lambda x : x['name'], reverse=False)
+            sorted_obj = sorted(saved_data, key=lambda x : x['name'], reverse=False)
             # Write to passwords file
             with open(settings_dir + 'saved_data.json', mode='w+', encoding='utf-8') as file:
                 json.dump(sorted_obj, file, ensure_ascii=True, indent=4, sort_keys=True)
@@ -699,7 +745,7 @@ class MainMenu(QWidget):
                 bend_time_list.clear()
                 metal_type_list.clear()
                 metal_thickness_list.clear()
-                for info in passwords_json:
+                for info in saved_data:
                     for path in info['path']:
                         paths_list.append(path)
                     for name in info['name']:
@@ -1214,8 +1260,8 @@ if __name__ == '__main__':
 
     if os.path.exists(settings_dir + 'saved_data.json'):
         with open(settings_dir + 'saved_data.json') as file:
-            passwords_json = json.load(file)
-            for info in passwords_json:
+            saved_data = json.load(file)
+            for info in saved_data:
                 for path in info['path']:
                     paths_list.append(path)
                 for name in info['name']:
@@ -1238,6 +1284,25 @@ if __name__ == '__main__':
         file.close()
         with open(settings_dir + 'saved_data.json') as file:
             saved_data = json.load(file)
+    if os.path.exists(settings_dir + 'saved_batches.json'):
+        with open(settings_dir + 'saved_batches.json') as file:
+            saved_batches_data = json.load(file)
+            batch_name.clear()
+            batch_checked.clear()
+            batch_thickness.clear()
+            for info in saved_batches_data:
+                for name in info['name']:
+                    batch_name.append(name)
+                for checked in info['checked']:
+                    batch_checked.append(checked)
+                for thickness in info['thickness']:
+                    batch_thickness.append(thickness)
+    elif not os.path.exists(settings_dir + 'saved_batches.json'):
+        file = open(settings_dir + "saved_batches.json", "w+")
+        file.write("[]")
+        file.close()
+        with open(settings_dir + 'saved_batches.json') as file:
+            saved_batches_data = json.load(file)
     app = QApplication(sys.argv)
 
     main = MainMenu()
