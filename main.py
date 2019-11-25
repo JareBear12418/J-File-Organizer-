@@ -392,6 +392,7 @@ class MainMenu(QWidget):
             self.btnName = QPushButton(self)
             button_name = j
             self.btnName.setText(button_name + ' - ' + batch_thickness[i] + ' Gauge')
+            self.btnName.clicked.connect(partial(self.batches_details, j, batch_path[i]))
             self.btnName.setFlat(True)
             self.lay.addWidget(self.btnName, i + 1, 5)
 
@@ -476,13 +477,39 @@ class MainMenu(QWidget):
         self.update_batches()
     # def delete_batch(self):
     def clickBox(self, i, j, k, p, n, state):
+        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
         self.index = i
         self.batch_name = j
         self.batch_path = p
         self.thickness = k
         self.name = n
         # print(f'clickBox:  i={i}, j={j}, state={state}, thickness={k};')
-        global unfinished_batches, total_batches, saved_batches_data
+        with open(settings_dir + 'saved_batches.json') as file:
+            saved_batches_data = json.load(file)
+            batch_name.clear()
+            batch_thickness.clear()
+            batch_cutting_checked.clear()
+            batch_picking_checked.clear()
+            batch_bending_checked.clear()
+            batch_assembly_checked.clear()
+            batch_painting_checked.clear()
+            for info in saved_batches_data:
+                for name in info['name']:
+                    batch_name.append(name)
+                for path in info['path']:
+                    batch_path.append(path)
+                for cut_checked in info['cutting checked']:
+                    batch_cutting_checked.append(cut_checked)
+                for pick_checked in info['picking checked']:
+                    batch_picking_checked.append(pick_checked)
+                for bend_checked in info['bending checked']:
+                    batch_bending_checked.append(bend_checked)
+                for assemble_checked in info['assembly checked']:
+                    batch_assembly_checked.append(assemble_checked)
+                for paint_checked in info['painting checked']:
+                    batch_painting_checked.append(paint_checked)
+                for thickness in info['thickness']:
+                    batch_thickness.append(thickness)
         if state:
             for i, j in enumerate(saved_batches_data):
                 if self.index == i:
@@ -656,6 +683,8 @@ class MainMenu(QWidget):
                 self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
             except Exception as DivisionByZero:
                 self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
+    def batches_details(self, pdf_loc, n , p):
+        view_details(cache_dir + pdf_loc, n, p)
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
@@ -1128,7 +1157,6 @@ class Folder_Screeen(QWidget):
         self.filePath = ''
         self.width = width
         self.height = height
-        directory_to_open = directory_to_open.replace("\\", "/")
         self.showMaximized()
 
         directory_to_open = directory_to_open.replace('\\', '/')
@@ -1490,6 +1518,26 @@ class view_image(QtWidgets.QWidget):
     def photoClicked(self, pos):
         if self.viewer.dragMode()  == QGraphicsView.NoDrag:
             self.editPixInfo.setText('%d, %d' % (pos.x(), pos.y()))
+class view_details(QWidget):
+    def __init__(self, name, path, parent = None):
+        super(view_details, self).__init__(parent)
+        path = path.replace('\\', '/')
+        path = path.split('/')
+        path[0] = path[0].capitalize()
+        path = '/'.join(path)
+        self.setWindowTitle(name)
+        self.mod_name = name.replace('.pdf', '.png')
+
+        self.pdfText = QPlainTextEdit(self)
+        self.pdfText.setReadOnly(True)
+
+        self.thumbnail = QPushButton('View image', self)
+        self.thumbnail.clicked.connect(self.openImage)
+
+        print(f'PDF:{cache_dir + self.mod_name} name: {name} path: {path}')
+    def openImage(self):
+        self.vi = view_image(cache_dir + self.mod_name)
+        self.vi.show()
 if __name__ == '__main__':
     if not os.path.exists(settings_dir):
         os.makedirs(settings_dir)
