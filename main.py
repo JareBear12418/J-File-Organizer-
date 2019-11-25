@@ -345,6 +345,8 @@ class MainMenu(QWidget):
         # self.gridLayout1.setColumnStretch(1, 4)
         self.progressbar = QProgressBar(self)
         self.lblProgress = QLabel('0/0', self)
+        self.btnClearBatches = QPushButton('Clear Batches', self)
+        self.btnClearBatches.clicked.connect(self.clear_batches)
         self.layout = QHBoxLayout(self)
         self.layout.addLayout(self.gridLayout)
         self.layout.addLayout(self.gridLayout1)
@@ -352,6 +354,7 @@ class MainMenu(QWidget):
         self.gridLayout1.addWidget(self.scroll, 0, 0)
         self.gridLayout1.addWidget(self.lblProgress, 1, 0)
         self.gridLayout1.addWidget(self.progressbar, 2, 0)
+        self.gridLayout1.addWidget(self.btnClearBatches, 3, 0)
 
         self.scroll.move(7, 80)
         self.scroll.setWidgetResizable(True)
@@ -433,11 +436,45 @@ class MainMenu(QWidget):
             self.check_box_assembly.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'assembly'))
             self.lay.addWidget(self.check_box_assembly, i + 1, 4)
 
-            total_batches += 1
+            total_batches += 5
 
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setValue(unfinished_batches)
         self.progressbar.setMaximum(total_batches)
+    def clear_batches(self):
+        global batch_list, metal_thickness_list, unfinished_batches, total_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
+        file = open(settings_dir + "saved_batches.json", "w+")
+        file.write("[]")
+        file.close()
+        with open(settings_dir + 'saved_batches.json') as file:
+            saved_batches_data = json.load(file)
+            batch_name.clear()
+            batch_thickness.clear()
+            batch_cutting_checked.clear()
+            batch_picking_checked.clear()
+            batch_bending_checked.clear()
+            batch_assembly_checked.clear()
+            batch_painting_checked.clear()
+            for info in saved_batches_data:
+                for name in info['name']:
+                    batch_name.append(name)
+                for path in info['path']:
+                    batch_path.append(path)
+                for cut_checked in info['cutting checked']:
+                    batch_cutting_checked.append(cut_checked)
+                for pick_checked in info['picking checked']:
+                    batch_picking_checked.append(pick_checked)
+                for bend_checked in info['bending checked']:
+                    batch_bending_checked.append(bend_checked)
+                for assemble_checked in info['assembly checked']:
+                    batch_assembly_checked.append(assemble_checked)
+                for paint_checked in info['painting checked']:
+                    batch_painting_checked.append(paint_checked)
+                for thickness in info['thickness']:
+                    batch_thickness.append(thickness)
+        self.clearLayout(self.lay)
+        self.update_batches()
+    # def delete_batch(self):
     def clickBox(self, i, j, k, p, n, state):
         self.index = i
         self.batch_name = j
