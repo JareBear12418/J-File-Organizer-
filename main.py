@@ -118,6 +118,7 @@ class MainMenu(QWidget):
         self.price = ''
         self.pdf_location = ''
         self.mt = ''
+        self.button_path = ''
         self.createTabs()
         topLayout = QHBoxLayout()
         topLayout.addStretch(1)
@@ -127,7 +128,6 @@ class MainMenu(QWidget):
         self.setLayout(mainLayout)
         mainLayout = QGridLayout()
         self.update_batches()
-        self.showMaximized()
     def createTabs(self):
         self.bottomLeftTabWidget = QTabWidget()
         self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Ignored)
@@ -382,20 +382,32 @@ class MainMenu(QWidget):
         # batch_list.sort()
         total_batches = 0
         unfinished_batches = 0
-
         for e, x in enumerate(['Cutting', 'Picking', 'Bending', 'Painting', 'Assembly', 'Part Name']):
             self.label = QLabel(x, self)
             self.label.setFont(QFont('Calibri', 14))
             self.lay.addWidget(self.label, 0, e)
 
         for i, j in enumerate(batch_name):
+            for k, l in enumerate(paths_list):
+                l = l.replace('\\', '/')
+                l = l.split('/')
+                l[0] = l[0].capitalize()
+                l = '/'.join(l)
+                if l == batch_path[i]:
+                    self.button_path = l
+                # if saved_data['name'] == j:
+                #     if saved_data['thickness'].replace(' Gauge', '') == batch_thickness[i]:
+                        
             self.btnName = QPushButton(self)
             button_name = j
             self.btnName.setText(button_name + ' - ' + batch_thickness[i] + ' Gauge')
-            self.btnName.clicked.connect(partial(self.batches_details, j, batch_path[i]))
+            self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
             self.btnName.setFlat(True)
             self.lay.addWidget(self.btnName, i + 1, 5)
 
+            self.btnDeleteBatch = QPushButton('X', self)
+            self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_path[i], i))
+            self.lay.addWidget(self.btnDeleteBatch, i + 1, 6)
 
             self.check_box_cutting = QCheckBox(self)
             if batch_cutting_checked[i] == 'True':
@@ -475,7 +487,49 @@ class MainMenu(QWidget):
                     batch_thickness.append(thickness)
         self.clearLayout(self.lay)
         self.update_batches()
-    # def delete_batch(self):
+    def delete_batch(self, bp, i):
+        self.index = i
+        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
+        for i, j in enumerate(saved_batches_data):
+            if self.index == i:
+                if j['path'][0] == bp:
+                    saved_batches_data.pop(i)
+                    from operator import itemgetter
+                    import operator
+                    sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
+                    with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
+                        json.dump(sorted_saved_batches_data, file, ensure_ascii=True, indent=4, sort_keys=True)
+        with open(settings_dir + 'saved_batches.json') as file:
+            saved_batches_data = json.load(file)
+            batch_name.clear()
+            batch_thickness.clear()
+            batch_cutting_checked.clear()
+            batch_picking_checked.clear()
+            batch_bending_checked.clear()
+            batch_assembly_checked.clear()
+            batch_painting_checked.clear()
+            for info in saved_batches_data:
+                for name in info['name']:
+                    batch_name.append(name)
+                for path in info['path']:
+                    batch_path.append(path)
+                for cut_checked in info['cutting checked']:
+                    batch_cutting_checked.append(cut_checked)
+                for pick_checked in info['picking checked']:
+                    batch_picking_checked.append(pick_checked)
+                for bend_checked in info['bending checked']:
+                    batch_bending_checked.append(bend_checked)
+                for assemble_checked in info['assembly checked']:
+                    batch_assembly_checked.append(assemble_checked)
+                for paint_checked in info['painting checked']:
+                    batch_painting_checked.append(paint_checked)
+                for thickness in info['thickness']:
+                    batch_thickness.append(thickness)
+
+        self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
+        self.progressbar.setValue(unfinished_batches)
+        self.clearLayout(self.lay)
+        self.update_batches()
     def clickBox(self, i, j, k, p, n, state):
         global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
         self.index = i
@@ -683,8 +737,9 @@ class MainMenu(QWidget):
                 self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
             except Exception as DivisionByZero:
                 self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
-    def batches_details(self, pdf_loc, n , p):
-        view_details(cache_dir + pdf_loc, n, p)
+    def batches_details(self, n , p):
+        self.vd = view_details(n, p)
+        self.vd.show()
     # TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
@@ -1066,7 +1121,7 @@ class MainMenu(QWidget):
                 self.pathList.insertItem(i, j)
                 self.filePath = j
                 self.verify()
-            self.pathList.setCurrentRow(0)
+            # self.pathList.setCurrentRow(0)
     def path_list_clicked(self):
         try:
             item = self.pathList.currentItem()
@@ -1519,24 +1574,51 @@ class view_image(QtWidgets.QWidget):
         if self.viewer.dragMode()  == QGraphicsView.NoDrag:
             self.editPixInfo.setText('%d, %d' % (pos.x(), pos.y()))
 class view_details(QWidget):
-    def __init__(self, name, path, parent = None):
-        super(view_details, self).__init__(parent)
+    def __init__(self, name, path):
+        global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
+        super(view_details, self).__init__()
         path = path.replace('\\', '/')
         path = path.split('/')
         path[0] = path[0].capitalize()
         path = '/'.join(path)
+        self.p = path
         self.setWindowTitle(name)
-        self.mod_name = name.replace('.pdf', '.png')
-
+        self.name_detail = name
+        if name.endswith('.pdf'):
+            self.mod_name = name.replace('.pdf', ' - pdf.png')
+        elif name.endswith('.dxf'):
+            self.mod_name = name.replace('.dxf', ' - dxf.png')
+            
         self.pdfText = QPlainTextEdit(self)
         self.pdfText.setReadOnly(True)
-
+        for i, j in enumerate(paths_list):
+            j = j.replace('\\', '/')
+            j = j.split('/')
+            j[0] = j[0].capitalize()
+            j = '/'.join(j)
+            if self.p == j:
+                self.price = ''
+                n = folder_list[i].split('/')
+                n[0] = n[0].capitalize()
+                n = '/'.join(n)
+                j = j.replace(n + '/', '')
+                m = paths_list[i].split('/')
+                m[0] = m[0].capitalize()
+                m = '/'.join(m)
+                self.pdfText.setPlainText(f"""File Name: {j}\nFile Path: {m}\n\nDestination: {n}\n\nSelected Metal Thickness: {metal_thickness_list[i]}\nSelected Metal Type: {metal_type_list[i]}\n\nCut Time: {cut_time_list[i]}\nBend Time: {bend_time_list[i]}\nWeight: {weight_list[i]}\n\nPrice: {self.price}""")
+            else:
+                self.pdfText.setPlainText(f"""Can't retrieve any data.""")
+            
         self.thumbnail = QPushButton('View image', self)
         self.thumbnail.clicked.connect(self.openImage)
-
-        print(f'PDF:{cache_dir + self.mod_name} name: {name} path: {path}')
+        mainLayout = QGridLayout()
+        mainLayout.addWidget(self.pdfText,0,0)
+        mainLayout.addWidget(self.thumbnail,1,0)
+        self.setLayout(mainLayout)
+        # print(f'PDF:{cache_dir + self.mod_name} name: {name} path: {path}')
     def openImage(self):
         self.vi = view_image(cache_dir + self.mod_name)
+        print(cache_dir + self.mod_name)
         self.vi.show()
 if __name__ == '__main__':
     if not os.path.exists(settings_dir):
