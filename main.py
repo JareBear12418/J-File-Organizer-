@@ -38,8 +38,12 @@ weight_list = []
 saved_batches_data = []
 batch_name = []
 batch_path = []
-batch_checked = []
 batch_thickness = []
+batch_cutting_checked = []
+batch_picking_checked = []
+batch_bending_checked = []
+batch_assembly_checked = []
+batch_painting_checked = []
 # price_list = []
 # JSON DATA END ================
 # MISC VAR START ==============
@@ -80,7 +84,8 @@ all_metal_thicknesses_inches = [
                                 '0.0187',
                                 '0.0157']
 all_metal_types = ['Steel',
-                   'Stainless Steel']
+                   'Stainless Steel',
+                   'Galvanized']
 class HoverButton(QPushButton):
     def __init__(self, name, parent=None):
         global last_hovered_file
@@ -108,40 +113,79 @@ class MainMenu(QWidget):
         self.width = width
         self.height = height
         self.showMaximized()
-        # self.lastHoverdButton = last_hovered_file
         self.filePath = ''
         self.fileName = ''
         self.price = ''
         self.pdf_location = ''
         self.mt = ''
-
         self.createTabs()
-
         topLayout = QHBoxLayout()
         topLayout.addStretch(1)
-
         mainLayout = QGridLayout()
         mainLayout.addLayout(topLayout, 0, 0, 0, 0)
-        # mainLayout.addWidget(self.topLeftGroupBox, 1, 0)
-        # mainLayout.addWidget(self.topRightGroupBox, 1, 1)
         mainLayout.addWidget(self.bottomLeftTabWidget, 0, 0)
-        # mainLayout.addWidget(self.bottomRightGroupBox, 2, 1)
-        # mainLayout.setRowStretch(1, 1)
-        # mainLayout.setRowStretch(2, 1)
-        # mainLayout.setColumnStretch(0, 1)
-        # mainLayout.setColumnStretch(1, 1)
         self.setLayout(mainLayout)
-
-
         mainLayout = QGridLayout()
         self.update_batches()
         self.showMaximized()
     def createTabs(self):
         self.bottomLeftTabWidget = QTabWidget()
         self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Ignored)
+
         # ==================================== IMPORT ========================================
-        # ======================== GRID IMPORT ==========================
         self.gridLayoutImport = QGridLayout()
+        self.create_import_tab()
+        tabImport = QWidget()
+        tabImport.setLayout(self.layout2)
+
+        # ====================================== HOME ==================================
+        self.gridLayoutButtons = QGridLayout()
+        self.gridLayoutButtons.setColumnStretch(3, 3)
+        tabHome = QWidget()
+        self.create_home_tab()
+        tabHomehbox = QVBoxLayout()
+        tabHomehbox.addLayout(self.gridLayoutButtons)
+        tabHomehbox.setContentsMargins(5, 5, 5, 5)
+        tabHome.setLayout(tabHomehbox)
+
+        # ====================== BATCHES ===============================
+        tabBatches = QWidget()
+        self.create_batch_tab()
+
+        tabBatches.setLayout(self.layout)
+        self.bottomLeftTabWidget.addTab(tabHome, "&Home")
+        self.bottomLeftTabWidget.addTab(tabImport, "&Import")
+        self.bottomLeftTabWidget.addTab(tabBatches, "&Batches")
+        self.back()
+        self.verify()
+    def create_home_tab(self):
+        j = 0
+        k = 0
+        dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
+        for i, p in enumerate(dirs):
+            p = files_dir + dirs[i]
+            open_directory = partial(self.open_tree_directory, p)
+            p = p.replace(files_dir, '')
+            self.btnOpen = HoverButton(p,self)
+            self.btnOpen.setStyleSheet('text-align: bottom')
+            self.btnOpen.setFlat(True)
+            self.btnOpen.setContextMenuPolicy(Qt.CustomContextMenu)
+            self.btnOpen.customContextMenuRequested.connect(self.btnOpenContextMenu)
+            self.btnOpenPopup = QMenu(self)
+            createFolder = QAction('Add folder', self)
+            btnAdd_directory = partial(self.btnAddFolder, True)
+            createFolder.triggered.connect(btnAdd_directory)
+            self.btnOpenPopup.addAction(createFolder)
+            self.btnOpen.setIcon(QIcon('icons/folder.png'))
+            self.btnOpen.setIconSize(QSize(64,64))
+            self.btnOpen.resize(50, 50)
+            self.btnOpen.clicked.connect(open_directory)
+            self.gridLayoutButtons.addWidget(self.btnOpen, j, k)
+            k += 1
+            if k > 3:
+                k = 0
+                j += 1
+    def create_import_tab(self):
         self.gridLayoutImport.setColumnStretch(0, 0)
         self.gridLayoutImport.setColumnStretch(0, 0)
         self.gridLayoutImport.setRowStretch(0, 0)
@@ -170,13 +214,7 @@ class MainMenu(QWidget):
         self.folderToImport = QComboBox(self)
         self.folderToImport.setFont(QFont('Calibri', 14))
         self.folderToImport.currentTextChanged.connect(self.verify)
-        # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
-        # dirs = [os.path.join(r,file) for r,d,f in os.walk(files_dir) for file in f]
-        # dirs = [os.path.abspath(x) for x in os.listdir(files_dir)]
-        # dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
         global files_dir
-        # dirs = [x[0] for x in os.walk(files_dir)]
-        # dirs = [fname.rsplit('.', 1)[0] for fname in os.listdir(files_dir)]
         d = files_dir
         dirs = [os.path.join(d, o) for o in os.listdir(d) if os.path.isdir(os.path.join(d,o))]
         dirs2 = []
@@ -250,50 +288,7 @@ class MainMenu(QWidget):
         self.layout2.addLayout(self.gridLayoutPreview)
         self.layout2.addLayout(self.gridLayoutButtons2)
         self.layout2.setContentsMargins(5, 5, 5, 5)
-
-        tabImport = QWidget()
-        tabImport.setLayout(self.layout2)
-        # tabImport.setLayout(tabImportHbox)
-
-        # ====================================== HOME ==================================
-        self.gridLayoutButtons = QGridLayout()
-        self.gridLayoutButtons.setColumnStretch(3, 3)
-        tabHome = QWidget()
-        j = 0
-        k = 0
-        dirs = [d for d in os.listdir('Files') if os.path.isdir(os.path.join('Files', d))]
-        for i, p in enumerate(dirs):
-            p = files_dir + dirs[i]
-            open_directory = partial(self.open_tree_directory, p)
-            p = p.replace(files_dir, '')
-            self.btnOpen = HoverButton(p,self)
-            self.btnOpen.setStyleSheet('text-align: bottom')
-            self.btnOpen.setFlat(True)
-            self.btnOpen.setContextMenuPolicy(Qt.CustomContextMenu)
-            self.btnOpen.customContextMenuRequested.connect(self.btnOpenContextMenu)
-            self.btnOpenPopup = QMenu(self)
-            createFolder = QAction('Add folder', self)
-            btnAdd_directory = partial(self.btnAddFolder, True)
-            createFolder.triggered.connect(btnAdd_directory)
-            self.btnOpenPopup.addAction(createFolder)
-            self.btnOpen.setIcon(QIcon('icons/folder.png'))
-            self.btnOpen.setIconSize(QSize(64,64))
-            self.btnOpen.resize(50, 50)
-            self.btnOpen.clicked.connect(open_directory)
-            self.gridLayoutButtons.addWidget(self.btnOpen, j, k)
-            k += 1
-            if k > 3:
-                k = 0
-                j += 1
-
-        tabHomehbox = QVBoxLayout()
-        tabHomehbox.addLayout(self.gridLayoutButtons)
-        tabHomehbox.setContentsMargins(5, 5, 5, 5)
-        # tabHomehbox.addWidget(self.btnAddConnection)
-        # tabHomehbox.addWidget(self.messageText)
-        tabHome.setLayout(tabHomehbox)
-        tabBatches = QWidget()
-
+    def create_batch_tab(self):
         f = files_dir.split('/')
         f[0] = f[0].capitalize()
         f = '/'.join(f)
@@ -350,9 +345,9 @@ class MainMenu(QWidget):
         # self.gridLayout1.setColumnStretch(1, 4)
         self.progressbar = QProgressBar(self)
         self.lblProgress = QLabel('0/0', self)
-        layout = QHBoxLayout(self)
-        layout.addLayout(self.gridLayout)
-        layout.addLayout(self.gridLayout1)
+        self.layout = QHBoxLayout(self)
+        self.layout.addLayout(self.gridLayout)
+        self.layout.addLayout(self.gridLayout1)
         self.scroll = QScrollArea(self)
         self.gridLayout1.addWidget(self.scroll, 0, 0)
         self.gridLayout1.addWidget(self.lblProgress, 1, 0)
@@ -363,14 +358,6 @@ class MainMenu(QWidget):
         self.content = QWidget()
         self.scroll.setWidget(self.content)
         self.lay = QGridLayout(self.content)
-        # self.grid_batch_names_grid = QGridLayout(self)
-        # self.lay.addWidget(self.grid_batch_names_grid, 0, 1)
-        tabBatches.setLayout(layout)
-        self.bottomLeftTabWidget.addTab(tabHome, "&Home")
-        self.bottomLeftTabWidget.addTab(tabImport, "&Import")
-        self.bottomLeftTabWidget.addTab(tabBatches, "&Batches")
-        self.back()
-        self.verify()
     def back(self):
         temp = os.getcwd() + '/Files'
         temp = temp.replace('\\', '/')
@@ -388,60 +375,208 @@ class MainMenu(QWidget):
             self.setWindowTitle(self.filePath)
             self.adjust_root_index()
     def update_batches(self):
-        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_checked, batch_path
+        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
         # batch_list.sort()
         total_batches = 0
         unfinished_batches = 0
+
+        for e, x in enumerate(['Cutting', 'Picking', 'Bending', 'Painting', 'Assembly', 'Part Name']):
+            self.label = QLabel(x, self)
+            self.label.setFont(QFont('Calibri', 14))
+            self.lay.addWidget(self.label, 0, e)
+
         for i, j in enumerate(batch_name):
             self.btnName = QPushButton(self)
             button_name = j
             self.btnName.setText(button_name + ' - ' + batch_thickness[i] + ' Gauge')
             self.btnName.setFlat(True)
-            self.lay.addWidget(self.btnName, i, 1)
-            self.check_box = QCheckBox(self)
-            
-            if batch_checked[i] == 'True':
+            self.lay.addWidget(self.btnName, i + 1, 5)
+
+
+            self.check_box_cutting = QCheckBox(self)
+            if batch_cutting_checked[i] == 'True':
                 unfinished_batches += 1
-                self.check_box.setChecked(True)
-            else:
-                self.check_box.setChecked(False)
-            self.check_box.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i]))
-            self.lay.addWidget(self.check_box, i, 0)
+                self.check_box_cutting.setChecked(True)
+            else: self.check_box_cutting.setChecked(False)
+            self.check_box_cutting.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'cutting'))
+            self.lay.addWidget(self.check_box_cutting, i + 1, 0)
+
+            self.check_box_picking = QCheckBox(self)
+            if batch_picking_checked[i] == 'True':
+                unfinished_batches += 1
+                self.check_box_picking.setChecked(True)
+            else: self.check_box_picking.setChecked(False)
+            self.check_box_picking.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'picking'))
+            self.lay.addWidget(self.check_box_picking, i + 1, 1)
+
+            self.check_box_bending = QCheckBox(self)
+            if batch_bending_checked[i] == 'True':
+                unfinished_batches += 1
+                self.check_box_bending.setChecked(True)
+            else: self.check_box_bending.setChecked(False)
+            self.check_box_bending.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'bending'))
+            self.lay.addWidget(self.check_box_bending, i + 1, 2)
+
+            self.check_box_painting = QCheckBox(self)
+            if batch_painting_checked[i] == 'True':
+                unfinished_batches += 1
+                self.check_box_painting.setChecked(True)
+            else: self.check_box_painting.setChecked(False)
+            self.check_box_painting.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'painting'))
+            self.lay.addWidget(self.check_box_painting, i + 1, 3)
+
+            self.check_box_assembly = QCheckBox(self)
+            if batch_assembly_checked[i] == 'True':
+                unfinished_batches += 1
+                self.check_box_assembly.setChecked(True)
+            else: self.check_box_assembly.setChecked(False)
+            self.check_box_assembly.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'assembly'))
+            self.lay.addWidget(self.check_box_assembly, i + 1, 4)
+
             total_batches += 1
-        
+
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setValue(unfinished_batches)
         self.progressbar.setMaximum(total_batches)
-    def clickBox(self, i, j, k, p, state):
+    def clickBox(self, i, j, k, p, n, state):
         self.index = i
         self.batch_name = j
         self.batch_path = p
         self.thickness = k
+        self.name = n
         # print(f'clickBox:  i={i}, j={j}, state={state}, thickness={k};')
         global unfinished_batches, total_batches, saved_batches_data
         if state:
             for i, j in enumerate(saved_batches_data):
                 if self.index == i:
                     if j['path'][0] == self.batch_path:
+                        temp_cutting = j['cutting checked'][0]
+                        temp_picking = j['picking checked'][0]
+                        temp_bending = j['bending checked'][0]
+                        temp_painting = j['painting checked'][0]
+                        temp_assembly = j['assembly checked'][0]
                         saved_batches_data.pop(i)
-                        saved_batches_data.append({
-                        'checked': ['True'],
-                        'path': [self.batch_path],
-                        'name': [self.batch_name],
-                        'thickness': [self.thickness.replace(' Gauge', '')],
-                        })
+                        if self.name == 'cutting':
+                            saved_batches_data.append({
+                            'cutting checked': ['True'],
+                            'picking checked': [temp_picking],
+                            'bending checked': [temp_bending],
+                            'painting checked': [temp_painting],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'picking':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': ['True'],
+                            'bending checked': [temp_bending],
+                            'painting checked': [temp_painting],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'bending':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': [temp_picking],
+                            'bending checked': ['True'],
+                            'painting checked': [temp_painting],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'painting':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': [temp_picking],
+                            'bending checked': [temp_bending],
+                            'painting checked': ['True'],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'assembly':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': [temp_picking],
+                            'bending checked': [temp_bending],
+                            'painting checked': [temp_painting],
+                            'assembly checked': ['True'],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
             unfinished_batches += 1
         else:
             for i, j in enumerate(saved_batches_data):
                 if self.index == i:
                     if j['path'][0] == self.batch_path:
+                        temp_cutting = j['cutting checked'][0]
+                        temp_picking = j['picking checked'][0]
+                        temp_bending = j['bending checked'][0]
+                        temp_painting = j['painting checked'][0]
+                        temp_assembly = j['assembly checked'][0]
                         saved_batches_data.pop(i)
-                        saved_batches_data.append({
-                        'checked': ['False'],
-                        'path': [self.batch_path],
-                        'name': [self.batch_name],
-                        'thickness': [self.thickness.replace(' Gauge', '')],
-                        })
+                        if self.name == 'cutting':
+                            saved_batches_data.append({
+                            'cutting checked': ['False'],
+                            'picking checked': [temp_picking],
+                            'bending checked': [temp_bending],
+                            'painting checked': [temp_painting],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'picking':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': ['False'],
+                            'bending checked': [temp_bending],
+                            'painting checked': [temp_painting],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'bending':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': [temp_picking],
+                            'bending checked': ['False'],
+                            'painting checked': [temp_painting],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'painting':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': [temp_picking],
+                            'bending checked': [temp_bending],
+                            'painting checked': ['False'],
+                            'assembly checked': [temp_assembly],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
+                        if self.name == 'assembly':
+                            saved_batches_data.append({
+                            'cutting checked': [temp_cutting],
+                            'picking checked': [temp_picking],
+                            'bending checked': [temp_bending],
+                            'painting checked': [temp_painting],
+                            'assembly checked': ['False'],
+                            'path': [self.batch_path],
+                            'name': [self.batch_name],
+                            'thickness': [self.thickness.replace(' Gauge', '')],
+                            })
             unfinished_batches -= 1
         from operator import itemgetter
         import operator
@@ -451,18 +586,30 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
-            batch_path.clear()
-            batch_checked.clear()
             batch_thickness.clear()
+            batch_cutting_checked.clear()
+            batch_picking_checked.clear()
+            batch_bending_checked.clear()
+            batch_assembly_checked.clear()
+            batch_painting_checked.clear()
             for info in saved_batches_data:
                 for name in info['name']:
                     batch_name.append(name)
-                for checked in info['checked']:
-                    batch_checked.append(checked)
-                for thickness in info['thickness']:
-                    batch_thickness.append(thickness)
                 for path in info['path']:
                     batch_path.append(path)
+                for cut_checked in info['cutting checked']:
+                    batch_cutting_checked.append(cut_checked)
+                for pick_checked in info['picking checked']:
+                    batch_picking_checked.append(pick_checked)
+                for bend_checked in info['bending checked']:
+                    batch_bending_checked.append(bend_checked)
+                for assemble_checked in info['assembly checked']:
+                    batch_assembly_checked.append(assemble_checked)
+                for paint_checked in info['painting checked']:
+                    batch_painting_checked.append(paint_checked)
+                for thickness in info['thickness']:
+                    batch_thickness.append(thickness)
+
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setValue(unfinished_batches)
 
@@ -518,7 +665,7 @@ class MainMenu(QWidget):
             if self.filePath == j:
                 self.mt = metal_thickness_list[i]
     def treeMedia_doubleClicked(self,index):
-        global batch_list, metal_thickness_list, unfinished_batches, total_batches, saved_batches_data, batch_name, batch_thickness, batch_checked, batch_path
+        global batch_list, metal_thickness_list, unfinished_batches, total_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
         source_index = self.proxy_model.mapToSource(index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
@@ -536,7 +683,11 @@ class MainMenu(QWidget):
             if os.path.exists(settings_dir + 'saved_batches.json'):
                 # batch_list.append(self.fileName)
                 saved_batches_data.append({
-                'checked': ['False'],
+                'cutting checked': ['False'],
+                'picking checked': ['False'],
+                'bending checked': ['False'],
+                'assembly checked': ['False'],
+                'painting checked': ['False'],
                 'path': [self.filePath],
                 'name': [self.fileName],
                 'thickness': [self.mt.replace(' Gauge', '')],
@@ -553,18 +704,29 @@ class MainMenu(QWidget):
                 with open(settings_dir + 'saved_batches.json') as file:
                     saved_batches_data = json.load(file)
                     batch_name.clear()
-                    batch_path.clear()
-                    batch_checked.clear()
                     batch_thickness.clear()
+                    batch_cutting_checked.clear()
+                    batch_picking_checked.clear()
+                    batch_bending_checked.clear()
+                    batch_assembly_checked.clear()
+                    batch_painting_checked.clear()
                     for info in saved_batches_data:
                         for name in info['name']:
                             batch_name.append(name)
-                        for checked in info['checked']:
-                            batch_checked.append(checked)
-                        for thickness in info['thickness']:
-                            batch_thickness.append(thickness)
                         for path in info['path']:
                             batch_path.append(path)
+                        for cut_checked in info['cutting checked']:
+                            batch_cutting_checked.append(cut_checked)
+                        for pick_checked in info['picking checked']:
+                            batch_picking_checked.append(pick_checked)
+                        for bend_checked in info['bending checked']:
+                            batch_bending_checked.append(bend_checked)
+                        for assemble_checked in info['assembly checked']:
+                            batch_assembly_checked.append(assemble_checked)
+                        for paint_checked in info['painting checked']:
+                            batch_painting_checked.append(paint_checked)
+                        for thickness in info['thickness']:
+                            batch_thickness.append(thickness)
             elif not os.path.exists(settings_dir + 'saved_batches.json'):
                 file = open(settings_dir + "saved_batches.json", "w+")
                 file.write("[]")
@@ -901,6 +1063,9 @@ class MainMenu(QWidget):
                     # self.mm.show()
                     # self.close()
                     self.clearLayout(self.gridLayoutButtons)
+                    self.create_home_tab()
+                    self.clearLayout(self.gridLayoutImport)
+                    self.create_import_tab()
                 else:
                     buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{text}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
                     return
@@ -911,6 +1076,9 @@ class MainMenu(QWidget):
                     # self.mm.show()
                     # self.close()
                     self.clearLayout(self.gridLayoutButtons)
+                    self.create_home_tab()
+                    self.clearLayout(self.gridLayoutImport)
+                    self.create_import_tab()
                 else:
                     buttonReply = QMessageBox.warning(self, 'Already Exists', f"\"{last_hovered_file}\" Already Exists", QMessageBox.Ok, QMessageBox.Ok)
                     return
@@ -994,7 +1162,6 @@ class Folder_Screeen(QWidget):
         layout = QHBoxLayout(self)
         layout.addLayout(self.gridLayout)
         layout.addLayout(self.gridLayout1)
-
     def back(self):
         temp = os.getcwd() + '/Files'
         temp = temp.replace('\\', '/')
@@ -1016,17 +1183,14 @@ class Folder_Screeen(QWidget):
     def on_textChanged(self):
         self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
         self.adjust_root_index()
-
     def adjust_root_index(self):
         root_index = self.model.index(self.path)
         proxy_index = self.proxy_model.mapFromSource(root_index)
         self.treeView.setRootIndex(proxy_index)
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
             if self.lineEditFilePath.text() != '':
                 os.remove(self.lineEditFilePath.text())
-
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def on_treeView_clicked(self, index):
         global saved_data, paths_list, names_list, folder_list, metal_thickness_list, metal_type_list, cut_time_list, bend_time_list, weight_list
@@ -1135,7 +1299,6 @@ class Folder_Screeen(QWidget):
                     event.accept()
                     return
         event.ignore()
-
     def dropEvent(self, event):
         if event.source():
             QTreeView.dropEvent(self, event)
@@ -1165,7 +1328,6 @@ class Folder_Screeen(QWidget):
                     accepted = True
                 if accepted:
                     event.acceptProposedAction()
-
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls:
             event.setDropAction(Qt.CopyAction)
@@ -1194,7 +1356,6 @@ class Folder_Screeen(QWidget):
                         buttonReply = QMessageBox.warning(self, 'Error!', f"\"{self.fileName}\" Doesn\'t Exist", QMessageBox.Ok, QMessageBox.Ok)
                         return
     # TREE VIEW END ====================================
-
     def closeEvent(self, event):
         self.mm = MainMenu()
         self.mm.setWindowTitle(title + ' ' + version)
@@ -1216,10 +1377,8 @@ class PhotoViewer(QtWidgets.QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setBackgroundBrush(QBrush(QColor(30, 30, 30)))
         self.setFrameShape(QFrame.NoFrame)
-
     def hasPhoto(self):
         return not self._empty
-
     def fitInView(self, scale=True):
         rect = QRectF(self._photo.pixmap().rect())
         if not rect.isNull():
@@ -1233,7 +1392,6 @@ class PhotoViewer(QtWidgets.QGraphicsView):
                              viewrect.height() / scenerect.height())
                 self.scale(factor, factor)
             self._zoom = 0
-
     def setPhoto(self, pixmap=None):
         self._zoom = 100
         if pixmap and not pixmap.isNull():
@@ -1245,7 +1403,6 @@ class PhotoViewer(QtWidgets.QGraphicsView):
             self.setDragMode(QGraphicsView.NoDrag)
             self._photo.setPixmap(QPixmap())
         self.fitInView()
-
     def wheelEvent(self, event):
         if self.hasPhoto():
             if event.angleDelta().y() > 0:
@@ -1260,13 +1417,11 @@ class PhotoViewer(QtWidgets.QGraphicsView):
                 self.fitInView()
             else:
                 self._zoom = 0
-
     def toggleDragMode(self):
         if self.dragMode() == QGraphicsView.ScrollHandDrag:
             self.setDragMode(QGraphicsView.NoDrag)
         elif not self._photo.pixmap().isNull():
             self.setDragMode(QGraphicsView.ScrollHandDrag)
-
     def mousePressEvent(self, event):
         if self._photo.isUnderMouse():
             self.photoClicked.emit(self.mapToScene(event.pos()).toPoint())
@@ -1290,14 +1445,11 @@ class view_image(QtWidgets.QWidget):
         HBlayout.setAlignment(Qt.AlignLeft)
         VBlayout.addLayout(HBlayout)
         self.loadImage()
-
     def loadImage(self):
         self.viewer.setPhoto(QPixmap(self.image_to_open))
         self.showMaximized()
-
     def pixInfo(self):
         self.viewer.toggleDragMode()
-
     def photoClicked(self, pos):
         if self.viewer.dragMode()  == QGraphicsView.NoDrag:
             self.editPixInfo.setText('%d, %d' % (pos.x(), pos.y()))
@@ -1341,15 +1493,27 @@ if __name__ == '__main__':
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
-            batch_checked.clear()
             batch_thickness.clear()
+            batch_cutting_checked.clear()
+            batch_picking_checked.clear()
+            batch_bending_checked.clear()
+            batch_assembly_checked.clear()
+            batch_painting_checked.clear()
             for info in saved_batches_data:
                 for name in info['name']:
                     batch_name.append(name)
                 for path in info['path']:
                     batch_path.append(path)
-                for checked in info['checked']:
-                    batch_checked.append(checked)
+                for cut_checked in info['cutting checked']:
+                    batch_cutting_checked.append(cut_checked)
+                for pick_checked in info['picking checked']:
+                    batch_picking_checked.append(pick_checked)
+                for bend_checked in info['bending checked']:
+                    batch_bending_checked.append(bend_checked)
+                for assemble_checked in info['assembly checked']:
+                    batch_assembly_checked.append(assemble_checked)
+                for paint_checked in info['painting checked']:
+                    batch_painting_checked.append(paint_checked)
                 for thickness in info['thickness']:
                     batch_thickness.append(thickness)
     elif not os.path.exists(settings_dir + 'saved_batches.json'):
