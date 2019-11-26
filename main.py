@@ -920,7 +920,6 @@ class MainMenu(QWidget):
                 if action.text() == "Create folder":
                     if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
                         self.treeView.edit(ix)
-
                 if action.text() == 'Add':
                     thisdir = self.filePath
                     selected_paths = []
@@ -929,96 +928,94 @@ class MainMenu(QWidget):
                     for r, d, f in os.walk(thisdir):
                         for file in f:
                             if ".pdf" in file:
-                                selected_paths = (os.path.join(r, file))
-                                selected_files = file
-                                
+                                selected_paths.append((os.path.join(r, file)))
+                                selected_files.append(file)
                     self.add_batch_list(selected_files, selected_paths)
+                    selected_files.clear()
+                    selected_paths.clear()
     def add_batch_list(self, batches_file, batches_path):
         global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
         source_index = self.proxy_model.mapToSource(self.index)
         indexItem = self.model.index(source_index.row(), 0, source_index.parent())
         self.fileName = self.model.fileName(indexItem)
-        print(self.fileName)
         self.filePath = self.model.filePath(indexItem)
-        print(self.filePath)
         self.listPath = batches_path
-        print(self.listPath)
+        # print(self.listPath)
         self.listFile = batches_file
-        print(self.listFile)
+        # print(self.listFile)
         if not total_batches == 0 :
             try:
                 perc = int(unfinished_batches / total_batches * 100)
                 self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
             except Exception as DivisionByZero:
                 self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
-        if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
-            self.path = self.filePath
-            self.adjust_root_index()
-        elif self.fileName.lower().endswith(('.pdf', '.dxf')):
-            if os.path.exists(settings_dir + 'saved_batches.json'):
-                for i, j in enumerate(self.listFile):
-                    p = paths_list[i]
-                    p = p.replace('\\', '/')
-                    p = p.split('/')
-                    p[0] = p[0].capitilize()
-                    p = '/'.join(p)
-                    if p == self.listPath[i]:
-                        self.mt = metal_thickness_list[i]
-                    for i, j in enumerate(paths_list):
-                        j = j.replace('\\', '/')
-                        j = j.split('/')
-                        j[0] = j[0].capitalize()
-                        j = '/'.join(j)
-                        if self.filePath == j:
-                            self.mt = metal_thickness_list[i]
-                    # batch_list.append(self.fileName)
-                    saved_batches_data.append({
-                    'cutting checked': ['False'],
-                    'picking checked': ['False'],
-                    'bending checked': ['False'],
-                    'assembly checked': ['False'],
-                    'painting checked': ['False'],
-                    'path': [self.listPaht[i]],
-                    'name': [j],
-                    'thickness': [self.mt.replace(' Gauge', '')],
-                    })
-                    file_copy_location = folder + '/'
-                    if not os.path.exists(file_copy_location):
-                        os.makedirs(file_copy_location)
-                    # sort json file
-                    sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
-                    with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
-                        json.dump(sorted_saved_batches_data, file, ensure_ascii=True, indent=4, sort_keys=True)
-                    with open(settings_dir + 'saved_batches.json') as file:
-                        saved_batches_data = json.load(file)
-                        batch_name.clear()
-                        batch_thickness.clear()
-                        batch_cutting_checked.clear()
-                        batch_picking_checked.clear()
-                        batch_bending_checked.clear()
-                        batch_assembly_checked.clear()
-                        batch_painting_checked.clear()
-                        for info in saved_batches_data:
-                            for name in info['name']:
-                                batch_name.append(name)
-                            for path in info['path']:
-                                batch_path.append(path)
-                            for cut_checked in info['cutting checked']:
-                                batch_cutting_checked.append(cut_checked)
-                            for pick_checked in info['picking checked']:
-                                batch_picking_checked.append(pick_checked)
-                            for bend_checked in info['bending checked']:
-                                batch_bending_checked.append(bend_checked)
-                            for assemble_checked in info['assembly checked']:
-                                batch_assembly_checked.append(assemble_checked)
-                            for paint_checked in info['painting checked']:
-                                batch_painting_checked.append(paint_checked)
-                            for thickness in info['thickness']:
-                                batch_thickness.append(thickness)
-            elif not os.path.exists(settings_dir + 'saved_batches.json'):
-                file = open(settings_dir + "saved_batches.json", "w+")
-                file.write("[]")
-                file.close()
+        
+        if os.path.exists(settings_dir + 'saved_batches.json'):
+            for i, j in enumerate(self.listFile):
+                with open(settings_dir + 'saved_batches.json') as file:
+                    saved_batches_data = json.load(file)
+                p = paths_list[i]
+                # p = p.replace('\\', '/')
+                # p = p.split('/')
+                # p[0] = p[0].capitilize()
+                # p = '/'.join(p)
+                if p == self.listPath[i]:
+                    self.mt = metal_thickness_list[i]
+                # for i, j in enumerate(paths_list):
+                #     j = j.replace('\\', '/')
+                #     j = j.split('/')
+                #     j[0] = j[0].capitalize()
+                #     j = '/'.join(j)
+                #     if self.filePath == j:
+                #         self.mt = metal_thickness_list[i]
+                # batch_list.append(self.fileName)
+                saved_batches_data.append({
+                'cutting checked': ['False'],
+                'picking checked': ['False'],
+                'bending checked': ['False'],
+                'assembly checked': ['False'],
+                'painting checked': ['False'],
+                'path': [self.listPath[i]],
+                'name': [j],
+                'thickness': [self.mt.replace(' Gauge', '')],
+                })
+                file_copy_location = folder + '/'
+                if not os.path.exists(file_copy_location):
+                    os.makedirs(file_copy_location)
+                # sort json file
+                sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
+                with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
+                    json.dump(sorted_saved_batches_data, file, ensure_ascii=True, indent=4, sort_keys=True)
+                with open(settings_dir + 'saved_batches.json') as file:
+                    saved_batches_data = json.load(file)
+                    batch_name.clear()
+                    batch_thickness.clear()
+                    batch_cutting_checked.clear()
+                    batch_picking_checked.clear()
+                    batch_bending_checked.clear()
+                    batch_assembly_checked.clear()
+                    batch_painting_checked.clear()
+                    for info in saved_batches_data:
+                        for name in info['name']:
+                            batch_name.append(name)
+                        for path in info['path']:
+                            batch_path.append(path)
+                        for cut_checked in info['cutting checked']:
+                            batch_cutting_checked.append(cut_checked)
+                        for pick_checked in info['picking checked']:
+                            batch_picking_checked.append(pick_checked)
+                        for bend_checked in info['bending checked']:
+                            batch_bending_checked.append(bend_checked)
+                        for assemble_checked in info['assembly checked']:
+                            batch_assembly_checked.append(assemble_checked)
+                        for paint_checked in info['painting checked']:
+                            batch_painting_checked.append(paint_checked)
+                        for thickness in info['thickness']:
+                            batch_thickness.append(thickness)
+        elif not os.path.exists(settings_dir + 'saved_batches.json'):
+            file = open(settings_dir + "saved_batches.json", "w+")
+            file.write("[]")
+            file.close()
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
         self.clearLayout(self.lay)
