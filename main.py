@@ -397,7 +397,7 @@ class MainMenu(QWidget):
                     self.button_path = l
                 # if saved_data['name'] == j:
                 #     if saved_data['thickness'].replace(' Gauge', '') == batch_thickness[i]:
-                        
+
             self.btnName = QPushButton(self)
             button_name = j
             self.btnName.setText(button_name + ' - ' + batch_thickness[i] + ' Gauge')
@@ -909,6 +909,7 @@ class MainMenu(QWidget):
             menu = QMenu()
             menu.addAction("Create folder")
             menu.addAction("View")
+            menu.addAction("Add")
             action = menu.exec_(self.treeView.mapToGlobal(point))
             if action:
                 if action.text() == "View":
@@ -917,6 +918,20 @@ class MainMenu(QWidget):
                 if action.text() == "Create folder":
                     if not self.fileName.lower().endswith(('.png', '.jpg', '.jpeg', '.pdf', 'dfx', 'txt')):
                         self.treeView.edit(ix)
+
+                if action.text() == 'Add':
+                    thisdir = self.filePath
+                    selected_files = []
+                    # r=root, d=directories, f = files
+                    for r, d, f in os.walk(thisdir):
+                        for file in f:
+                            if ".pdf" in file:
+                                selected_files = (os.path.join(r, file))
+                    for i, j in enumerate(selected_files):
+                        self.add_batch_list(selected_files)
+    def add_batch_list(self, batches):
+        global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
+
     # TREE VIEW END ====================================
     def clearLayout(self, layout):
         if layout is not None:
@@ -1266,6 +1281,7 @@ class Folder_Screeen(QWidget):
         for i in range(1, self.treeView.model().columnCount()):
             self.treeView.header().hideSection(i)
         self.pdfText = QPlainTextEdit(self)
+        self.pdfText.setFont(QFont('Calibri', 16))
         self.pdfText.setReadOnly(True)
 
         self.gridLayout = QGridLayout()
@@ -1583,13 +1599,16 @@ class view_details(QWidget):
         path = '/'.join(path)
         self.p = path
         self.setWindowTitle(name)
+        # self.resize(300,200)
+        self.resize(640, 480)
         self.name_detail = name
         if name.endswith('.pdf'):
             self.mod_name = name.replace('.pdf', ' - pdf.png')
         elif name.endswith('.dxf'):
             self.mod_name = name.replace('.dxf', ' - dxf.png')
-            
+
         self.pdfText = QPlainTextEdit(self)
+        self.pdfText.setFont(QFont('Calibri', 16))
         self.pdfText.setReadOnly(True)
         for i, j in enumerate(paths_list):
             j = j.replace('\\', '/')
@@ -1608,7 +1627,7 @@ class view_details(QWidget):
                 self.pdfText.setPlainText(f"""File Name: {j}\nFile Path: {m}\n\nDestination: {n}\n\nSelected Metal Thickness: {metal_thickness_list[i]}\nSelected Metal Type: {metal_type_list[i]}\n\nCut Time: {cut_time_list[i]}\nBend Time: {bend_time_list[i]}\nWeight: {weight_list[i]}\n\nPrice: {self.price}""")
             else:
                 self.pdfText.setPlainText(f"""Can't retrieve any data.""")
-            
+
         self.thumbnail = QPushButton('View image', self)
         self.thumbnail.clicked.connect(self.openImage)
         mainLayout = QGridLayout()
