@@ -1005,20 +1005,19 @@ class MainMenu(QWidget):
                 saved_batches_data = json.load(file)
             for i, j in enumerate(self.listFile):
                 for l, k in enumerate(paths_list):
-                    p = k
-                    p = p.replace('\\', '/')
-                    p = p.split('/')
-                    p[0] = p[0].capitalize()
-                    p = '/'.join(p)
+                    k = k.replace('\\', '/')
+                    k = k.split('/')
+                    k[0] = k[0].capitalize()
+                    k = '/'.join(k)
 
                     o = self.listPath[i]
                     o = o.replace('\\', '/')
                     o = o.split('/')
                     o[0] = o[0].capitalize()
                     o = '/'.join(o)
-                    if o == p:
-                        # self.mt = saved_data[i]['thickness']
-                        self.mt = metal_thickness_list[l]
+                    if k == o:
+                        self.mt = saved_data[l]['thickness']
+                        # self.mt = metal_thickness_list[l]
                         print(self.mt)
                         # print(saved_data[i]['thickness'])
 
