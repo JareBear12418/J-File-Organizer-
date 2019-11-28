@@ -30,11 +30,11 @@ saved_data = []
 paths_list = []
 names_list = []
 folder_list = []
-metal_thickness_list = []
-metal_type_list = []
+weight_list = []
 cut_time_list = []
 bend_time_list = []
-weight_list = []
+metal_type_list = []
+metal_thickness_list = []
 
 saved_batches_data = []
 batch_name = []
@@ -396,18 +396,15 @@ class MainMenu(QWidget):
                 l = '/'.join(l)
                 if l == batch_path[i]:
                     self.button_path = l
-                # if saved_data['name'] == j:
-                #     if saved_data['thickness'].replace(' Gauge', '') == batch_thickness[i]:
-
+                    
             self.btnName = QPushButton(self)
-            button_name = j
-            self.btnName.setText(button_name + ' - ' + batch_thickness[i] + ' Gauge')
+            self.btnName.setText(j + ' - ' + batch_thickness[i] + ' Gauge')
             self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
             self.btnName.setFlat(True)
             self.lay.addWidget(self.btnName, i + 1, 5)
 
             self.btnDeleteBatch = QPushButton('X', self)
-            self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_path[i], i))
+            self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_name[i], batch_path[i], i))
             self.lay.addWidget(self.btnDeleteBatch, i + 1, 6)
 
             self.check_box_cutting = QCheckBox(self)
@@ -455,6 +452,7 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -489,6 +487,7 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -514,12 +513,16 @@ class MainMenu(QWidget):
                     batch_thickness.append(thickness)
         self.clearLayout(self.lay)
         self.update_batches()
-    def delete_batch(self, bp, ind):
+    def delete_batch(self, bn, bp, ind):
         self.index = ind
+        print(bp)
+        print(bn)
+        print(ind)
         global total_batches, unfinished_batches, saved_batches_data, batch_name, batch_thickness, batch_cutting_checked, batch_picking_checked, batch_bending_checked, batch_assembly_checked, batch_painting_checked, batch_path
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -555,6 +558,7 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -594,6 +598,7 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -757,6 +762,7 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -793,7 +799,7 @@ class MainMenu(QWidget):
     def batches_details(self, n , p):
         self.vd = view_details(n, p)
         self.vd.show()
-    # TREE VIEW START ====================================
+# TREE VIEW START ====================================
     @QtCore.pyqtSlot(str)
     def on_textChanged(self):
         self.proxy_model.setFilterWildcard("*{}*".format(self.txtSearch.text()))
@@ -866,9 +872,9 @@ class MainMenu(QWidget):
                 'name': [self.fileName],
                 'thickness': [self.mt.replace(' Gauge', '')],
                 })
-                # file_copy_location = folder + '/'
-                # if not os.path.exists(file_copy_location):
-                #     os.makedirs(file_copy_location)
+                file_copy_location = folder + '/'
+                if not os.path.exists(file_copy_location):
+                    os.makedirs(file_copy_location)
                 # sort json file
                 from operator import itemgetter
                 import operator
@@ -878,6 +884,7 @@ class MainMenu(QWidget):
                 with open(settings_dir + 'saved_batches.json') as file:
                     saved_batches_data = json.load(file)
                     batch_name.clear()
+                    batch_path.clear()
                     batch_thickness.clear()
                     batch_cutting_checked.clear()
                     batch_picking_checked.clear()
@@ -1017,18 +1024,7 @@ class MainMenu(QWidget):
                     o = '/'.join(o)
                     if k == o:
                         self.mt = saved_data[l]['thickness']
-                        # self.mt = metal_thickness_list[l]
-                        print(self.mt)
-                        # print(saved_data[i]['thickness'])
-
-                # for i, j in enumerate(paths_list):
-                #     j = j.replace('\\', '/')
-                #     j = j.split('/')
-                #     j[0] = j[0].capitalize()
-                #     j = '/'.join(j)
-                #     if self.filePath == j:
-                #         self.mt = metal_thickness_list[i]
-                # batch_list.append(self.fileName)
+                        
                 moded_path = self.listPath[i]
                 moded_path = moded_path.replace('\\', '/')
                 moded_path = moded_path.split('/')
@@ -1045,9 +1041,9 @@ class MainMenu(QWidget):
                 'name': [j],
                 'thickness': [self.mt[0].replace(' Gauge', '')],
                 })
-                # file_copy_location = folder + '/'
-                # if not os.path.exists(file_copy_location):
-                #     os.makedirs(file_copy_location)
+                file_copy_location = folder + '/'
+                if not os.path.exists(file_copy_location):
+                    os.makedirs(file_copy_location)
                 # sort json file
                 sorted_saved_batches_data = sorted(saved_batches_data, key=itemgetter('thickness'), reverse=True)
                 with open(settings_dir + 'saved_batches.json', mode='w+', encoding='utf-8') as file:
@@ -1055,6 +1051,7 @@ class MainMenu(QWidget):
                 with open(settings_dir + 'saved_batches.json') as file:
                     saved_batches_data = json.load(file)
                     batch_name.clear()
+                    batch_path.clear()
                     batch_thickness.clear()
                     batch_cutting_checked.clear()
                     batch_picking_checked.clear()
@@ -1085,6 +1082,7 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -1124,6 +1122,7 @@ class MainMenu(QWidget):
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
@@ -1882,6 +1881,7 @@ if __name__ == '__main__':
         with open(settings_dir + 'saved_batches.json') as file:
             saved_batches_data = json.load(file)
             batch_name.clear()
+            batch_path.clear()
             batch_thickness.clear()
             batch_cutting_checked.clear()
             batch_picking_checked.clear()
