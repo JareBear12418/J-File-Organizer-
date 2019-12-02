@@ -45,6 +45,12 @@ batch_picking_checked = []
 batch_bending_checked = []
 batch_assembly_checked = []
 batch_painting_checked = []
+
+batch_bending_completed_id = []
+batch_bending_completed_path = []
+batch_bending_completed_name = []
+batch_bending_completed_index = []
+batch_bending_completed_thickness = []
 # price_list = []
 # JSON DATA END ================
 # MISC VAR START ==============
@@ -397,15 +403,16 @@ class MainMenu(QWidget):
                 if l == batch_path[i]:
                     self.button_path = l
 
-            self.btnName = QPushButton(self)
-            self.btnName.setText(j + ' - ' + batch_thickness[i] + ' Gauge')
-            self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
-            self.btnName.setFlat(True)
-            self.lay.addWidget(self.btnName, i + 1, 5)
+            if batch_bending_checked[i] == 'False':
+                self.btnName = QPushButton(self)
+                self.btnName.setText(j + ' - ' + batch_thickness[i] + ' Gauge')
+                self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
+                self.btnName.setFlat(True)
+                self.lay.addWidget(self.btnName, i + 1, 5)
 
-            self.btnDeleteBatch = QPushButton('X', self)
-            self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_name[i], batch_path[i], i))
-            self.lay.addWidget(self.btnDeleteBatch, i + 1, 6)
+                self.btnDeleteBatch = QPushButton('X', self)
+                self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_name[i], batch_path[i], i))
+                self.lay.addWidget(self.btnDeleteBatch, i + 1, 6)
 
             self.check_box_cutting = QCheckBox(self)
             if batch_cutting_checked[i] == 'True':
@@ -434,11 +441,16 @@ class MainMenu(QWidget):
                 unfinished_batches += 1
                 self.check_box_bending.setText('Completed!')
                 self.check_box_bending.setChecked(True)
+                batch_bending_completed_name.append(j)
+                batch_bending_completed_index.append(i)
+                batch_bending_completed_id.append('bending')
+                batch_bending_completed_path.append(batch_path[i])
+                batch_bending_completed_thickness.append(batch_thickness[i])
             else:
+                self.lay.addWidget(self.check_box_bending, i + 1, 2)
                 self.check_box_bending.setText('Incomplete!')
                 self.check_box_bending.setChecked(False)
             self.check_box_bending.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'bending'))
-            self.lay.addWidget(self.check_box_bending, i + 1, 2)
 
             self.check_box_painting = QCheckBox(self)
             if batch_painting_checked[i] == 'True':
@@ -805,8 +817,8 @@ class MainMenu(QWidget):
 
         self.lblProgress.setText(str(unfinished_batches) + '/' + str(total_batches))
         self.progressbar.setValue(unfinished_batches)
-        # self.clearLayout(self.lay)
-        # self.update_batches()
+        self.clearLayout(self.lay)
+        self.update_batches()
 
         if not total_batches == 0 :
             try:
