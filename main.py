@@ -415,7 +415,7 @@ class MainMenu(QWidget):
                 batch_painting_completed_state.append(batch_painting_checked[i])
                 batch_cutting_completed_state.append(batch_cutting_checked[i])
                 batch_picking_completed_state.append(batch_picking_checked[i])
-                
+
                 if j.endswith('.dxf') or j.endswith('.DXF'):
                     new_name = (os.path.splitext(j)[0])
                     output = cache_dir + new_name + ' - dxf.png'
@@ -430,6 +430,7 @@ class MainMenu(QWidget):
                 self.btnName = QPushButton(self)
                 self.btnName.setText(j + ' - ' + batch_thickness[i] + ' Gauge')
                 self.btnName.setIcon(QIcon(tn))
+                self.btnName.setIconSize(QSize(64,64))
                 self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
                 self.btnName.setFlat(True)
                 self.lay.addWidget(self.btnName, i + 1, 5)
@@ -491,7 +492,7 @@ class MainMenu(QWidget):
                 batch_bending_completed_id.append('bending')
                 batch_bending_completed_path.append(batch_path[i])
                 batch_bending_completed_thickness.append(batch_thickness[i])
-                
+
                 batch_assembly_completed_state.append(batch_assembly_checked[i])
                 batch_painting_completed_state.append(batch_painting_checked[i])
                 batch_cutting_completed_state.append(batch_cutting_checked[i])
@@ -520,7 +521,7 @@ class MainMenu(QWidget):
             self.check_box_bending.setText('Completed!')
             self.check_box_bending.setChecked(True)
             self.check_box_bending.stateChanged.connect(partial(self.clickBox, batch_bending_completed_index[i], j, batch_bending_completed_thickness[i] + ' Gauge', batch_bending_completed_path[i], batch_bending_completed_id[i]))
-            
+
             if j.endswith('.dxf') or j.endswith('.DXF'):
                 new_name = (os.path.splitext(j)[0])
                 output = cache_dir + new_name + ' - dxf.png'
@@ -534,6 +535,8 @@ class MainMenu(QWidget):
             self.btnName = QPushButton(self)
             self.btnName.setText(j + ' - ' + batch_bending_completed_thickness[i] + ' Gauge')
             self.btnName.setIcon(QIcon(tn))
+            self.btnName.setIconSize(QSize(64,64))
+
 
             self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
             self.btnName.setFlat(True)
@@ -544,7 +547,7 @@ class MainMenu(QWidget):
             self.lay.addWidget(self.btnName, i + total_iterations + 1, 5)
             self.lay.addWidget(self.btnDeleteBatch, i + total_iterations + 1, 6)
             self.lay.addWidget(self.check_box_bending, i + total_iterations + 1, 2)
-            
+
         # total_batches_num = list(map(str, total_batches_num))
         # batch_bending_completed_index = list(map(str, batch_bending_completed_index))
         # result = [e for e in total_batches_num if e in '\n'.join(batch_bending_completed_index)]
@@ -587,7 +590,7 @@ class MainMenu(QWidget):
                 self.check_box_assembly.setText('Incomplete!')
                 self.check_box_assembly.setChecked(False)
             self.check_box_assembly.stateChanged.connect(partial(self.clickBox, batch_bending_completed_index[i], batch_bending_completed_name[i], batch_bending_completed_thickness[i] + ' Gauge', batch_bending_completed_path[i], 'assembly'))
-        
+
             self.lay.addWidget(self.check_box_cutting, i + total_iterations + 1, 0)
             self.lay.addWidget(self.check_box_picking, i + total_iterations + 1, 1)
             self.lay.addWidget(self.check_box_painting, i + total_iterations + 1, 3)
