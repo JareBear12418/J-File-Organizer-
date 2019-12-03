@@ -123,6 +123,7 @@ class MainMenu(QWidget):
         self.title = title + ' ' + version
         self.width = width
         self.height = height
+        self.setMinimumSize(self.width, self.height)
         self.filePath = ''
         self.fileName = ''
         self.price = ''
@@ -333,12 +334,12 @@ class MainMenu(QWidget):
         self.treeView.setRootIndex(self.indexRoot)
         self.treeView.clicked.connect(self.on_treeView_clicked)
         self.treeView.doubleClicked.connect(self.treeMedia_doubleClicked)
-        self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
+        # self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
         self.treeView.setAnimated(True)
         self.treeView.setIndentation(20)
         self.treeView.setSortingEnabled(True)
-        self.treeView.setDragEnabled(True)
-        self.treeView.setAcceptDrops(True)
+        self.treeView.setDragEnabled(False)
+        self.treeView.setAcceptDrops(False)
         self.treeView.setDropIndicatorShown(True)
         self.treeView.setEditTriggers(QTreeView.NoEditTriggers)
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -346,15 +347,22 @@ class MainMenu(QWidget):
         for i in range(1, self.treeView.model().columnCount()):
             self.treeView.header().hideSection(i)
         self.gridLayout = QGridLayout()
-        self.gridLayout.setColumnStretch(1, 6)
-        # self.gridLayout.setRowStretch(0, 2)
+        # self.gridLayout.setColumnStretch(1, 4)
+        # self.gridLayout.setColumnStretch(4, 0)
+        
+        # self.labelFileName.move(0,0)
+        # self.btnBack.move(0,60)
+        # self.txtSearch.move(50, 60)
+        # self.txtSearch.resize(40, 120)
+        # self.treeView.move(0, 70)
+        # self.treeView.resize(self.width / 4, self.height)
         self.gridLayout.addWidget(self.labelFileName, 0, 0)
         self.gridLayout.addWidget(self.btnBack, 2, 0)
         self.gridLayout.addWidget(self.txtSearch, 1, 0)
         self.gridLayout.addWidget(self.treeView, 3, 0)
         self.gridLayout1 = QGridLayout()
-        # self.gridLayout1.setColumnStretch(12, 1)
-        self.gridLayout1.setColumnStretch(0, 0)
+        # self.gridLayout1.setColumnStretch(2, 0)
+        # self.gridLayout1.setColumnStretch(0, 2)
         self.progressbar = QProgressBar(self)
         self.lblProgress = QLabel('0/0', self)
         self.btnClearBatches = QPushButton('Clear Batches', self)
@@ -429,15 +437,20 @@ class MainMenu(QWidget):
 
                 self.btnName = QPushButton(self)
                 self.btnName.setText(j + ' - ' + batch_thickness[i] + ' Gauge')
-                self.btnName.setIcon(QIcon(tn))
-                self.btnName.setIconSize(QSize(64,64))
                 self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
                 self.btnName.setFlat(True)
                 self.lay.addWidget(self.btnName, i + 1, 5)
 
+                self.btnThumbnail = QPushButton(self)
+                self.btnThumbnail.setFlat(True)
+                self.btnThumbnail.setIcon(QIcon(tn))
+                self.btnThumbnail.setIconSize(QSize(80,80))
+                self.btnThumbnail.clicked.connect(partial(self.open_batch_pdf, j))
+                self.lay.addWidget(self.btnThumbnail, i + 1, 6)
+                
                 self.btnDeleteBatch = QPushButton('X', self)
                 self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_name[i], batch_path[i], i))
-                self.lay.addWidget(self.btnDeleteBatch, i + 1, 6)
+                self.lay.addWidget(self.btnDeleteBatch, i + 1, 7)
 
                 self.check_box_cutting = QCheckBox(self)
                 if batch_cutting_checked[i] == 'True':
@@ -534,18 +547,21 @@ class MainMenu(QWidget):
             tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
             self.btnName = QPushButton(self)
             self.btnName.setText(j + ' - ' + batch_bending_completed_thickness[i] + ' Gauge')
-            self.btnName.setIcon(QIcon(tn))
-            self.btnName.setIconSize(QSize(64,64))
-
-
             self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
             self.btnName.setFlat(True)
 
+            self.btnThumbnail = QPushButton(self)
+            self.btnThumbnail.setIcon(QIcon(tn))
+            self.btnThumbnail.clicked.connect(partial(self.open_batch_pdf, j))
+            self.btnThumbnail.setIconSize(QSize(80,80))
+            self.btnThumbnail.setFlat(True)
+            
             self.btnDeleteBatch = QPushButton('X', self)
             self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_bending_completed_name[i], batch_bending_completed_path[i], batch_bending_completed_index[i]))
 
             self.lay.addWidget(self.btnName, i + total_iterations + 1, 5)
-            self.lay.addWidget(self.btnDeleteBatch, i + total_iterations + 1, 6)
+            self.lay.addWidget(self.btnThumbnail, i + total_iterations + 1, 6)
+            self.lay.addWidget(self.btnDeleteBatch, i + total_iterations + 1, 7)
             self.lay.addWidget(self.check_box_bending, i + total_iterations + 1, 2)
 
         # total_batches_num = list(map(str, total_batches_num))
@@ -956,6 +972,14 @@ class MainMenu(QWidget):
                 self.setWindowTitle(self.filePath + '  ' + str(perc) + '%')
             except Exception as DivisionByZero:
                 self.setWindowTitle(self.filePath + '  ' + str(0) + '%')
+    def open_batch_pdf(self, n):
+        if n.endswith('.pdf'):
+            self.mod_name = n.replace('.pdf', ' - pdf.png')
+        elif n.endswith('.dxf'):
+            self.mod_name = n.replace('.dxf', ' - dxf.png')
+
+        self.vi = view_image(cache_dir + self.mod_name)
+        self.vi.show()
     def batches_details(self, n , p):
         self.vd = view_details(n, p)
         self.vd.show()
@@ -1591,8 +1615,8 @@ class Folder_Screeen(QWidget):
         self.filePath = ''
         self.width = width
         self.height = height
+        self.setMinimumSize(self.width, self.height)
         self.showMaximized()
-
         directory_to_open = directory_to_open.replace('\\', '/')
         directory_to_open = directory_to_open.split('/')
         directory_to_open[0] = directory_to_open[0].capitalize()
@@ -1632,12 +1656,12 @@ class Folder_Screeen(QWidget):
         self.treeView.setRootIndex(self.indexRoot)
         self.treeView.clicked.connect(self.on_treeView_clicked)
         self.treeView.doubleClicked.connect(self.treeMedia_doubleClicked)
-        self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
+        # self.treeView.setDragDropMode(QAbstractItemView.InternalMove)
         self.treeView.setAnimated(True)
         self.treeView.setIndentation(20)
         self.treeView.setSortingEnabled(True)
-        self.treeView.setDragEnabled(True)
-        self.treeView.setAcceptDrops(True)
+        self.treeView.setDragEnabled(False)
+        self.treeView.setAcceptDrops(False)
         self.treeView.setDropIndicatorShown(True)
         self.treeView.setEditTriggers(QTreeView.NoEditTriggers)
         self.treeView.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -1930,6 +1954,8 @@ class view_image(QtWidgets.QWidget):
     def __init__(self, directory_to_open):
         super(view_image, self).__init__()
         self.image_to_open = directory_to_open
+        self.height = height
+        self.width = width
         directory_to_open = directory_to_open.replace('\\','/')
         self.setWindowTitle(directory_to_open)
         self.viewer = PhotoViewer(self)
@@ -1947,6 +1973,7 @@ class view_image(QtWidgets.QWidget):
         self.loadImage()
     def loadImage(self):
         self.viewer.setPhoto(QPixmap(self.image_to_open))
+        self.setMinimumSize(self.height, self.width)
         self.showMaximized()
     def pixInfo(self):
         self.viewer.toggleDragMode()
@@ -1965,6 +1992,7 @@ class view_details(QWidget):
         self.setWindowTitle(name)
         # self.resize(300,200)
         self.resize(640, 480)
+        self.setMinimumSize(640, 480)
         self.name_detail = name
         if name.endswith('.pdf'):
             self.mod_name = name.replace('.pdf', ' - pdf.png')
