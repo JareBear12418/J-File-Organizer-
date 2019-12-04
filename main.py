@@ -357,59 +357,60 @@ class MainMenu(QWidget):
 
         vbox = QVBoxLayout(left_widget)
         vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.addWidget(self.labelFileName)
+        # vbox.addWidget(self.labelFileName)
 
         button_and_lineedit_container = QWidget()
         hlay_2 = QHBoxLayout(button_and_lineedit_container)
         hlay_2.setContentsMargins(0, 0, 0, 0)
         hlay_2.addWidget(self.btnBack)
+        hlay_2.addWidget(self.labelFileName)
         hlay_2.addWidget(self.txtSearch, stretch=1)
-
         vbox.addWidget(button_and_lineedit_container)
-        vbox.addWidget(self.treeView, stretch=1)
+        
+        # vbox.addWidget(self.treeView, stretch=1)
 
         bottom_container = QWidget()
-        bottom_container.setContentsMargins(0, 0, 0, 0)
+        left_gridlayout.addWidget(self.treeView)
+        # bottom_container.setContentsMargins(0, 0, 0, 0)
         bottom_container.setLayout(left_gridlayout)
         vbox.addWidget(bottom_container, stretch=1)
 
         self.progressbar = QProgressBar(self)
         self.btnClearBatches = QPushButton('Clear Batches', self)
-        right_widget = QWidget()
-        self.content = QWidget()
-        self.lay = QGridLayout(self.content)
-        self.lay.addWidget(self.btnClearBatches)
-        self.lay.addWidget(self.progressbar)
-        right_widget.setLayout(self.lay)
-        # right_widget.setLayout(right_gridlayout)
-        # hlay = QHBoxLayout(right_widget)
-        # hlay
-        self.layout.addWidget(left_widget, stretch=1)
-        self.layout.addWidget(right_widget, stretch=3)
-
-        # self.temp = QGridLayout(self)
-        # self.temp.addWidget(hlay_2)
-        # self.temp.addWidget(vbox)
-        # self.temp.addWidget(hlay)
-
-        # self.gridLayout.addWidget(self.labelFileName, 0, 0)
-        # self.gridLayout.addWidget(self.btnBack, 2, 0)
-        # self.gridLayout.addWidget(self.txtSearch, 1, 0)
-        # self.gridLayout.addWidget(self.treeView, 3, 0)
         self.lblProgress = QLabel('0/0', self)
-        self.btnClearBatches.clicked.connect(self.clear_batches)
-        # self.layout = QHBoxLayout(self)
-        # self.layout.addLayout(hlay)
-        # self.layout.addLayout(self.gridLayout1)
+        self.lblTotalWeight = QLabel('Total Weight: ', self)
+        self.lblTotalPrice = QLabel('Total Price: ', self)
+        self.lblTotalCutTime = QLabel('Total Cut Time: ', self)
+        self.lblTotalBendTime = QLabel('Total Bend Time: ', self)
+        
+        
+        right_widget = QWidget()
+        right_widget_bottom = QWidget()
+        right_widget_bottom_horz = QWidget()
+        # right_widget_horz = QVBoxLayout(right_widget_bottom)
+        right_widget_vert = QVBoxLayout(right_widget_bottom)
+        right_widget_vert_horz = QHBoxLayout(right_widget_bottom_horz)
+        # right_widget_horz.addWidget(right_widget)
+        
         self.scroll = QScrollArea(self)
-        # self.gridLayout1.addWidget(self.scroll, 0, 0)
-        # self.gridLayout1.addWidget(self.lblProgress, 1, 0)
-        # self.gridLayout1.addWidget(self.progressbar, 2, 0)
-        # self.gridLayout1.addWidget(self.btnClearBatches, 3, 0)
-
-        self.scroll.move(7, 80)
+        right_widget_vert.addWidget(self.scroll)
+        right_widget_vert.addWidget(right_widget_bottom_horz)
+        right_widget_vert.addWidget(self.btnClearBatches)
+        right_widget_vert.addWidget(self.progressbar)
+        right_widget_vert_horz.addWidget(self.lblProgress)
+        right_widget_vert_horz.addWidget(self.lblTotalWeight)
+        right_widget_vert_horz.addWidget(self.lblTotalCutTime)
+        right_widget_vert_horz.addWidget(self.lblTotalBendTime)
+        right_widget_vert_horz.addWidget(self.lblTotalPrice)
         self.scroll.setWidgetResizable(True)
-        self.scroll.setWidget(self.content)
+        self.scroll.setWidget(right_widget)
+        self.lay = QGridLayout(right_widget)
+        
+        self.layout.addWidget(left_widget, stretch=1)
+        self.layout.addWidget(right_widget_bottom, stretch=3)
+        # self.layout.addWidget(right_widget_bottom_horz, stretch=1)
+        # self.layout.addWidget(right_widget)
+        self.btnClearBatches.clicked.connect(self.clear_batches)
     def back(self):
         temp = os.getcwd() + '/Files'
         temp = temp.replace('\\', '/')
@@ -433,7 +434,7 @@ class MainMenu(QWidget):
         total_iterations = 0
         total_batches_num = []
 
-        for e, x in enumerate(['Cutting', 'Picking', 'Bending', 'Painting', 'Assembly', 'Part Name']):
+        for e, x in enumerate(['Cutting', 'Picking', 'Bending', 'Painting', 'Assembly', 'Part Name', 'Image']):
             self.label = QLabel(x, self)
             self.label.setFont(QFont('Calibri', 14))
             self.lay.addWidget(self.label, 0, e)
@@ -466,23 +467,26 @@ class MainMenu(QWidget):
 
                 self.btnName = QPushButton(self)
                 self.btnName.setText(j + ' - ' + batch_thickness[i] + ' Gauge')
-                self.btnName.setIcon(QIcon(tn))
-                self.btnName.setIconSize(QSize(64,64))
                 self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
                 self.btnName.setFlat(True)
                 self.lay.addWidget(self.btnName, i + 1, 5)
+                
+
+                self.btnThumbNail = QPushButton(self)
+                self.btnThumbNail.setIcon(QIcon(tn))
+                self.btnThumbNail.setIconSize(QSize(64,64))
+                self.btnThumbNail.setFlat(True)
+                self.lay.addWidget(self.btnThumbNail, i + 1, 6)
 
                 self.btnDeleteBatch = QPushButton('X', self)
                 self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_name[i], batch_path[i], i))
-                self.lay.addWidget(self.btnDeleteBatch, i + 1, 6)
+                self.lay.addWidget(self.btnDeleteBatch, i + 1, 7)
 
                 self.check_box_cutting = QCheckBox(self)
                 if batch_cutting_checked[i] == 'True':
                     unfinished_batches += 1
-                    self.check_box_cutting.setText('Completed!')
                     self.check_box_cutting.setChecked(True)
                 else:
-                    self.check_box_cutting.setText('Incomplete!')
                     self.check_box_cutting.setChecked(False)
                 self.check_box_cutting.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'cutting'))
                 self.lay.addWidget(self.check_box_cutting, i + 1, 0)
@@ -490,10 +494,8 @@ class MainMenu(QWidget):
                 self.check_box_picking = QCheckBox(self)
                 if batch_picking_checked[i] == 'True':
                     unfinished_batches += 1
-                    self.check_box_picking.setText('Completed!')
                     self.check_box_picking.setChecked(True)
                 else:
-                    self.check_box_picking.setText('Incomplete!')
                     self.check_box_picking.setChecked(False)
                 self.check_box_picking.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'picking'))
                 self.lay.addWidget(self.check_box_picking, i + 1, 1)
@@ -501,10 +503,8 @@ class MainMenu(QWidget):
                 self.check_box_painting = QCheckBox(self)
                 if batch_painting_checked[i] == 'True':
                     unfinished_batches += 1
-                    self.check_box_painting.setText('Completed!')
                     self.check_box_painting.setChecked(True)
                 else:
-                    self.check_box_painting.setText('Incomplete!')
                     self.check_box_painting.setChecked(False)
                 self.check_box_painting.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'painting'))
                 self.lay.addWidget(self.check_box_painting, i + 1, 3)
@@ -512,17 +512,14 @@ class MainMenu(QWidget):
                 self.check_box_assembly = QCheckBox(self)
                 if batch_assembly_checked[i] == 'True' :
                     unfinished_batches += 1
-                    self.check_box_assembly.setText('Completed!')
                     self.check_box_assembly.setChecked(True)
                 else:
-                    self.check_box_assembly.setText('Incomplete!')
                     self.check_box_assembly.setChecked(False)
                 self.check_box_assembly.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'assembly'))
                 self.lay.addWidget(self.check_box_assembly, i + 1, 4)
             self.check_box_bending = QCheckBox(self)
             if batch_bending_checked[i] == 'True':
                 unfinished_batches += 1
-                self.check_box_bending.setText('Completed!')
                 self.check_box_bending.setChecked(True)
                 batch_bending_completed_name.append(j)
                 batch_bending_completed_index.append(i)
@@ -536,7 +533,6 @@ class MainMenu(QWidget):
                 batch_picking_completed_state.append(batch_picking_checked[i])
             else:
                 self.lay.addWidget(self.check_box_bending, i + 1, 2)
-                self.check_box_bending.setText('Incomplete!')
                 self.check_box_bending.setChecked(False)
                 self.check_box_bending.stateChanged.connect(partial(self.clickBox, i, j, batch_thickness[i] + ' Gauge', batch_path[i], 'bending'))
 
@@ -555,7 +551,6 @@ class MainMenu(QWidget):
                 if l == batch_bending_completed_path[i]:
                     self.button_path = l
             self.check_box_bending = QCheckBox(self)
-            self.check_box_bending.setText('Completed!')
             self.check_box_bending.setChecked(True)
             self.check_box_bending.stateChanged.connect(partial(self.clickBox, batch_bending_completed_index[i], j, batch_bending_completed_thickness[i] + ' Gauge', batch_bending_completed_path[i], batch_bending_completed_id[i]))
 
@@ -571,18 +566,20 @@ class MainMenu(QWidget):
             tn = pixmap.scaled(512, 512, Qt.KeepAspectRatio)
             self.btnName = QPushButton(self)
             self.btnName.setText(j + ' - ' + batch_bending_completed_thickness[i] + ' Gauge')
-            self.btnName.setIcon(QIcon(tn))
-            self.btnName.setIconSize(QSize(64,64))
-
-
             self.btnName.clicked.connect(partial(self.batches_details, j, self.button_path))
             self.btnName.setFlat(True)
+
+            self.btnThumbNail = QPushButton(self)
+            self.btnThumbNail.setIcon(QIcon(tn))
+            self.btnThumbNail.setIconSize(QSize(64,64))
+            self.btnThumbNail.setFlat(True)
 
             self.btnDeleteBatch = QPushButton('X', self)
             self.btnDeleteBatch.clicked.connect(partial(self.delete_batch, batch_bending_completed_name[i], batch_bending_completed_path[i], batch_bending_completed_index[i]))
 
             self.lay.addWidget(self.btnName, i + total_iterations + 1, 5)
-            self.lay.addWidget(self.btnDeleteBatch, i + total_iterations + 1, 6)
+            self.lay.addWidget(self.btnThumbNail, i + total_iterations + 1, 6)
+            self.lay.addWidget(self.btnDeleteBatch, i + total_iterations + 1, 7)
             self.lay.addWidget(self.check_box_bending, i + total_iterations + 1, 2)
 
         # total_batches_num = list(map(str, total_batches_num))
@@ -594,37 +591,29 @@ class MainMenu(QWidget):
             self.check_box_cutting = QCheckBox(self)
             if batch_cutting_checked[temp_i] == 'True':
                 unfinished_batches += 1
-                self.check_box_cutting.setText('Completed!')
                 self.check_box_cutting.setChecked(True)
             else:
-                self.check_box_cutting.setText('Incomplete!')
                 self.check_box_cutting.setChecked(False)
             self.check_box_cutting.stateChanged.connect(partial(self.clickBox, batch_bending_completed_index[i], batch_bending_completed_name[i], batch_bending_completed_thickness[i] + ' Gauge', batch_bending_completed_path[i], 'cutting'))
             self.check_box_picking = QCheckBox(self)
             if batch_picking_checked[temp_i] == 'True':
                 unfinished_batches += 1
-                self.check_box_picking.setText('Completed!')
                 self.check_box_picking.setChecked(True)
             else:
-                self.check_box_picking.setText('Incomplete!')
                 self.check_box_picking.setChecked(False)
             self.check_box_picking.stateChanged.connect(partial(self.clickBox, batch_bending_completed_index[i], batch_bending_completed_name[i], batch_bending_completed_thickness[i] + ' Gauge', batch_bending_completed_path[i], 'picking'))
             self.check_box_painting = QCheckBox(self)
             if batch_painting_checked[temp_i] == 'True':
                 unfinished_batches += 1
-                self.check_box_painting.setText('Completed!')
                 self.check_box_painting.setChecked(True)
             else:
-                self.check_box_painting.setText('Incomplete!')
                 self.check_box_painting.setChecked(False)
             self.check_box_painting.stateChanged.connect(partial(self.clickBox, batch_bending_completed_index[i], batch_bending_completed_name[i], batch_bending_completed_thickness[i] + ' Gauge', batch_bending_completed_path[i], 'painting'))
             self.check_box_assembly = QCheckBox(self)
             if batch_assembly_checked[temp_i] == 'True' :
                 unfinished_batches += 1
-                self.check_box_assembly.setText('Completed!')
                 self.check_box_assembly.setChecked(True)
             else:
-                self.check_box_assembly.setText('Incomplete!')
                 self.check_box_assembly.setChecked(False)
             self.check_box_assembly.stateChanged.connect(partial(self.clickBox, batch_bending_completed_index[i], batch_bending_completed_name[i], batch_bending_completed_thickness[i] + ' Gauge', batch_bending_completed_path[i], 'assembly'))
 
