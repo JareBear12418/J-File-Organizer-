@@ -1,165 +1,125 @@
-# pip install pyqt5
 from PyQt5.QtMultimediaWidgets import *
 from PyQt5.QtMultimedia import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5 import *
-from requests import Session
-from threading import Thread
-from functools import partial
-from os.path import expanduser
-import sys, os, getpass, subprocess
-from socket import AF_INET, socket, SOCK_STREAM
-from time import sleep
+import os, sys
+class TreeDelegate(QtWidgets.QStyledItemDelegate):
+    buttonClicked = pyqtSignal(QModelIndex)
 
-title = ' Work Management'
-version = 'v0.1'
-width = 800
-height = 600
-username = getpass.getuser()
-name = username
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._mousePos = None
+        self._pressed = False
+        self.buttonWidth = 32
+        self.buttonIcon = QIcon('some icon')
 
-class MainMenu(QDialog):
+    def editorEvent(self, event, model, option, index):
+        if event.type() in (QEvent.Enter, QEvent.MouseMove):
+            self._mousePos = event.pos()
+            # request an update of the current index
+            option.widget.update(index)
+        elif event.type() == QEvent.Leave:
+            self._mousePos = None
+        elif event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            # check that the click is within the virtual button rectangle; note
+            # that the option rect shouldn't be touched, so we create a new one
+            # based on it
+            rect = QRect(option.rect)
+            rect.setLeft(rect.right() - self.buttonWidth)
+            if event.pos() in rect:
+                self._pressed = True
+            option.widget.update(index)
+        elif event.type() == QEvent.MouseButtonRelease:
+            if self._pressed and event.button() == Qt.LeftButton:
+                rect = QRect(option.rect)
+                rect.setLeft(rect.right() - self.buttonWidth)
+                # emit the click only if the release is within the button rect
+                if event.pos() in rect:
+                    self.buttonClicked.emit(index)
+            self._pressed = False
+            option.widget.update(index)
+        return super().editorEvent(event, model, option, index)
+
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        if index.isValid():
+            proxy = index.model()
+            fsModel = proxy.sourceModel()
+            # map the proxy index to the fsModel
+            srcIndex = proxy.mapToSource(index)
+            # I'm just checking if it's a file, if you want to check the extension
+            # you might need to use fsModel.fileName(srcIndex)
+            if not fsModel.isDir(srcIndex):
+                btnOption = QStyleOptionButton()
+                btnOption.text = 'hi'
+                # initialize the basic options with the view
+                btnOption.initFrom(option.widget)
+                # you can also use fsModel.fileIcon(srcIndex)
+                btnOption.icon = self.buttonIcon
+                # as before, create a new rectangle
+                btnOption.rect = QRect(option.rect)
+                btnOption.rect.setLeft(option.rect.right() - self.buttonWidth)
+                # remove the focus rectangle, as it will be inherited from the view
+                btnOption.state &= ~QStyle.State_HasFocus
+                if self._mousePos and self._mousePos in btnOption.rect:
+                    # if the style supports it, some kind of "glowing" border
+                    # will be shown on the button
+                    btnOption.state |= QStyle.State_MouseOver
+                    if self._pressed == Qt.LeftButton:
+                        # set the button pressed state
+                        btnOption.state |= QStyle.State_On
+                else:
+                    # ensure that there's no mouse over state (see above)
+                    btnOption.state &= ~QStyle.State_MouseOver
+
+                # finally, draw the virtual button
+                option.widget.style().drawControl(QStyle.CE_PushButton, btnOption, painter)
+
+
+class MainMenu(QWidget):
     def __init__(self, parent = None):
         super(MainMenu, self).__init__(parent)
-        subprocess.Popen(['test.pdf'],shell=True)
-        self.last_pos_x = 0
-        self.last_pos_w= 0
-        self.last_size_h = 0
-        self.last_size_w= 0
-        self.title = title + ' ' + version
-        self.width = width
-        self.height = height
-        self.num_of_lower_buttons = 4
-        self.setMinimumSize(self.width, self.height)
-
-
-        self.createTabs()
-
-        topLayout = QHBoxLayout()
-        # topLayout.addWidget(styleLabel)
-        # topLayout.addWidget(styleComboBox)
-        topLayout.addStretch(1)
-        # topLayout.addWidget(self.useStylePaletteCheckBox)
-        # topLayout.addWidget(disableWidgetsCheckBox)
-
-        mainLayout = QGridLayout()
-        mainLayout.addLayout(topLayout, 0, 0, 0, 0)
-        # mainLayout.addWidget(self.topLeftGroupBox, 1, 0)
-        # mainLayout.addWidget(self.topRightGroupBox, 1, 1)
-        mainLayout.addWidget(self.bottomLeftTabWidget, 0, 0)
-        # mainLayout.addWidget(self.bottomRightGroupBox, 2, 1)
-        # mainLayout.setRowStretch(1, 1)
-        # mainLayout.setRowStretch(2, 1)
-        # mainLayout.setColumnStretch(0, 1)
-        # mainLayout.setColumnStretch(1, 1)
-        self.setLayout(mainLayout)
-
-
-        mainLayout = QGridLayout()
-
-        #----Now comes the sockets part----
-        self.HOST = input('Enter host: ')
-        self.PORT = input('Enter port: ')
-        if not self.PORT:
-            self.PORT = 33000
-        else:
-            self.PORT = int(self.PORT)
-
-        self.BUFSIZ = 1024
-        self.ADDR = (self.HOST, self.PORT)
-
-        self.client_socket = socket(AF_INET, SOCK_STREAM)
-        self.client_socket.connect(self.ADDR)
-
-        self.receive_thread = Thread(target=self.receive)
-        self.receive_thread.start()
-    def createTabs(self):
-        self.bottomLeftTabWidget = QTabWidget()
-        self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,
-                QSizePolicy.Ignored)
-
-        home_directory = expanduser(os.path.dirname(os.path.realpath(__file__)))
-        self.model = QFileSystemModel()
-        self.model.setRootPath('')
-        self.tree = QTreeView()
-        self.tree.setModel(self.model)
         
-        self.tree.setAnimated(False)
-        self.tree.setIndentation(20)
-        self.tree.setSortingEnabled(True)
-        self.tree.setRootIndex(self.model.index(home_directory))
+        self.treeView = QTreeView(self)
+        self.treeView.resize(800,400)
+        self.treeView.setMouseTracking(True)
+        self.model = QFileSystemModel()
+        self.model.setRootPath(QDir.rootPath())
+        self.model.setFilter(QDir.NoDotAndDotDot | QDir.AllEntries | QDir.Dirs | QDir.Files)
+        self.proxy_model = QSortFilterProxyModel(recursiveFilteringEnabled = True, filterRole = QFileSystemModel.FileNameRole)
+        self.proxy_model.setSourceModel(self.model)
+        self.model.setReadOnly(False)
+        self.model.setNameFilterDisables(False)
 
-        tabFileshbox = QHBoxLayout()
-        tabFileshbox.setContentsMargins(5, 5, 5, 5)
-        tabFileshbox.addWidget(self.tree)
-        tabFiles = QWidget()
-        tabFiles.setLayout(tabFileshbox)
+        self.indexRoot = self.model.index(self.model.rootPath())
+        self.treeView.setModel(self.proxy_model)
 
-        tabChat = QWidget()
-        self.textEdit = QPlainTextEdit()
-        self.messageText = QLineEdit()
-        self.textEdit.setFocusPolicy(Qt.NoFocus)
-
-        tabChathbox = QVBoxLayout()
-        tabChathbox.setContentsMargins(5, 5, 5, 5)
-        tabChathbox.addWidget(self.textEdit)
-        tabChathbox.addWidget(self.messageText)
-        tabChat.setLayout(tabChathbox)
-
-        self.bottomLeftTabWidget.addTab(tabFiles, "&Files")
-        self.bottomLeftTabWidget.addTab(tabChat, "&Chat")
-
-
-
-    def receive(self):
-        """Handles receiving of messages."""
-        while True:
-            try:
-                msg = client_socket.recv(BUFSIZ).decode("utf8")
-                self.textEdit.appendPlainText(msg)
-            except OSError:  # Possibly client has left the chat.
-                break
+        self.treeView.setRootIndex(self.indexRoot)
+        self.treeView.setAnimated(True)
+        self.treeView.setIndentation(20)
+        self.treeView.setSortingEnabled(True)
+        self.treeView.setDragEnabled(False)
+        self.treeView.setAcceptDrops(False)
+        self.treeView.setDropIndicatorShown(True)
+        self.treeView.setEditTriggers(QTreeView.NoEditTriggers)
+        self.treeDelegate = TreeDelegate()
+        self.treeView.setItemDelegateForColumn(0, self.treeDelegate)
+        # self.treeDelegate.setText('press me :)')
+        self.treeDelegate.buttonClicked.connect(self.treeButtonClicked)
+        
+        for i in range(1, self.treeView.model().columnCount()):
+            self.treeView.header().hideSection(i)
 
 
-    def send(self, event=None):  # event is passed by binders.
-        """Handles sending of messages."""
-        msg = self.messageText.text()
-        self.messageText.setText("")  # Clears input field.
-        client_socket.send(bytes(msg, "utf8"))
-        if msg == "{quit}":
-            client_socket.close()
-            self.close()
-
-
-    def on_closing(self, event=None):
-        """This function is to be called when the window is closed."""
-        self.messageText.setText("{quit}")
-        send()
+    def treeButtonClicked(self, index):
+        print('{} clicked'.format(index.data()))
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
-
-    palette = QPalette()
-    palette.setColor(QPalette.Window, QColor(35, 35, 35))
-    palette.setColor(QPalette.WindowText, Qt.white)
-    palette.setColor(QPalette.Base, QColor(25, 25, 25))
-    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ToolTipBase, Qt.white)
-    palette.setColor(QPalette.ToolTipText, Qt.white)
-    palette.setColor(QPalette.Text, Qt.white)
-    palette.setColor(QPalette.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ButtonText, Qt.white)
-    palette.setColor(QPalette.BrightText, Qt.red)
-    palette.setColor(QPalette.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-    palette.setColor(QPalette.HighlightedText, Qt.black)
-    app.setPalette(palette)
-
     main = MainMenu()
-    main.setWindowTitle('Main Menu')
     main.show()
     sys.exit(app.exec_())
